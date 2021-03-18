@@ -1,6 +1,7 @@
 package protowire
 
 import (
+	"encoding/hex"
 	"reflect"
 	"testing"
 )
@@ -70,6 +71,49 @@ func Test_parseTags(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseTags() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUnmarshal(t *testing.T) {
+	varintTestBin, _ := hex.DecodeString("08b96010b292041801")
+	type varintTest struct {
+		Int32   int32 `protowire:"1,0"`
+		Int64   int64 `protowire:"2,0"`
+		Boolean bool  `protowire:"3,0"`
+	}
+
+	type args struct {
+		b []byte
+		v interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *varintTest
+		wantErr bool
+	}{
+		{
+			name: "Varintの検証バイナリ",
+			args: args{
+				b: varintTestBin,
+				v: &varintTest{},
+			},
+			want: &varintTest{
+				Int32:   12345,
+				Int64:   67890,
+				Boolean: true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := Unmarshal(tt.args.b, tt.args.v); (err != nil) != tt.wantErr {
+				t.Errorf("Unmarshal() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(tt.args.v, tt.want) {
+				t.Errorf("Unmarshal() got = %v, want %v", tt.args.b, tt.want)
 			}
 		})
 	}

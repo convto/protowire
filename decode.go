@@ -60,15 +60,42 @@ func Unmarshal(b []byte, v interface{}) error {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal: %w", err)
 		}
-		l -= n
 		// 仕様でtype, field_number合わせて32bitまでなので超えてたらエラー
 		if tag > math.MaxUint32 {
 			return fmt.Errorf("invalid structTag size: %w", OrverFlowErr)
 		}
 		// 下位3bitはtype, それ以外はfield_number
-		fieldNum := tag >> 3
-		tp := tag & 0x7
-		fmt.Printf("readed byte size: %d, field_number: %d, type: %d\n", n, fieldNum, tp)
+		fieldNum := uint32(tag >> 3)
+		tp := uint8(tag & 0x7)
+
+		st := sts[fieldNum]
+		if st.tp != tp {
+			return fmt.Errorf("wrong type, structTag type: %d, wire type: %d", st.tp, tp)
+		}
+		l -= n
+		b = b[n:]
+		switch tp {
+		case 0:
+			f, n, err := readVarint(b)
+			if err != nil {
+				return fmt.Errorf("failed to read varint field: %w", err)
+			}
+			target := reflect.ValueOf(v).Elem().Field(st.structFieldNum)
+			switch target.Interface().(type) {
+			case int64, int32, int16, int8, int:
+				target.SetInt(int64(f))
+			case uint64, uint32, uint16, uint8, uint:
+				target.SetUint(f)
+			case bool:
+				target.SetBool(f&1 == 1)
+			default:
+				return fmt.Errorf("unsupported type of varint: %s", target.Type().String())
+			}
+			b = b[n:]
+			l -= n
+		default:
+			return fmt.Errorf("unsupported type: %d, err: %w", tp, UnknownType)
+		}
 	}
 	return nil
 }
