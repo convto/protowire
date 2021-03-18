@@ -88,6 +88,11 @@ func TestUnmarshal(t *testing.T) {
 		Sint32 int32 `protowire:"1,0,zigzag"`
 		Sint64 int64 `protowire:"2,0,zigzag"`
 	}
+	testLengthDelimitedBin, _ := hex.DecodeString("0a18e38193e3828ce381afe381a6e38199e381a8e381a0e382881206ffeeddccbbaa")
+	type testLengthDelimited struct {
+		Str   string `protowire:"1,2"`
+		Bytes []byte `protowire:"2,2"`
+	}
 
 	type args struct {
 		b []byte
@@ -120,6 +125,17 @@ func TestUnmarshal(t *testing.T) {
 			want: &testVarintZigzag{
 				Sint32: -12345,
 				Sint64: -67890,
+			},
+		},
+		{
+			name: "Length-delimitedの検証バイナリ",
+			args: args{
+				b: testLengthDelimitedBin,
+				v: &testLengthDelimited{},
+			},
+			want: &testLengthDelimited{
+				Str:   "これはてすとだよ",
+				Bytes: []byte{0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA},
 			},
 		},
 	}

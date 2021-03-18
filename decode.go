@@ -58,8 +58,7 @@ func Unmarshal(b []byte, v interface{}) error {
 		return fmt.Errorf("failed to parse structTag from input interface{}: %w", err)
 	}
 
-	l := len(b)
-	for l > 0 {
+	for len(b) > 0 {
 		// タグは可変長バイト列形式
 		tag, n, err := readVarint(b)
 		if err != nil {
@@ -77,7 +76,6 @@ func Unmarshal(b []byte, v interface{}) error {
 		if st.tp != tp {
 			return fmt.Errorf("wrong type, structTag type: %d, wire type: %d", st.tp, tp)
 		}
-		l -= n
 		b = b[n:]
 		switch tp {
 		case 0:
@@ -109,7 +107,23 @@ func Unmarshal(b []byte, v interface{}) error {
 				return fmt.Errorf("unsupported type of varint: %s", target.Type().String())
 			}
 			b = b[n:]
-			l -= n
+		case 2:
+			byteLen, n, err := readVarint(b)
+			if err != nil {
+				return fmt.Errorf("failed to read varint field: %w", err)
+			}
+			b = b[n:]
+			val := b[:byteLen]
+			target := reflect.ValueOf(v).Elem().Field(st.structFieldNum)
+			switch target.Interface().(type) {
+			case string:
+				target.SetString(string(val))
+			case []byte:
+				target.SetBytes(val)
+			default:
+				return fmt.Errorf("unsupported type of length-delimited: %s", target.Type().String())
+			}
+			b = b[int(byteLen):]
 		default:
 			return fmt.Errorf("unsupported type: %d, err: %w", tp, UnknownType)
 		}
