@@ -77,11 +77,16 @@ func Test_parseTags(t *testing.T) {
 }
 
 func TestUnmarshal(t *testing.T) {
-	varintTestBin, _ := hex.DecodeString("08b96010b292041801")
-	type varintTest struct {
+	testVarintBin, _ := hex.DecodeString("08b96010b292041801")
+	type testVarint struct {
 		Int32   int32 `protowire:"1,0"`
 		Int64   int64 `protowire:"2,0"`
 		Boolean bool  `protowire:"3,0"`
+	}
+	testVarintZigzagBin, _ := hex.DecodeString("08f1c00110e3a408")
+	type testVarintZigzag struct {
+		Sint32 int32 `protowire:"1,0,zigzag"`
+		Sint64 int64 `protowire:"2,0,zigzag"`
 	}
 
 	type args struct {
@@ -91,19 +96,30 @@ func TestUnmarshal(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *varintTest
+		want    interface{}
 		wantErr bool
 	}{
 		{
 			name: "Varintの検証バイナリ",
 			args: args{
-				b: varintTestBin,
-				v: &varintTest{},
+				b: testVarintBin,
+				v: &testVarint{},
 			},
-			want: &varintTest{
+			want: &testVarint{
 				Int32:   12345,
 				Int64:   67890,
 				Boolean: true,
+			},
+		},
+		{
+			name: "Varintでzigzagの検証バイナリ",
+			args: args{
+				b: testVarintZigzagBin,
+				v: &testVarintZigzag{},
+			},
+			want: &testVarintZigzag{
+				Sint32: -12345,
+				Sint64: -67890,
 			},
 		},
 	}

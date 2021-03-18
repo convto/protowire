@@ -17,6 +17,7 @@ var (
 type structTag struct {
 	tp             uint8
 	structFieldNum int
+	zigzag         bool
 }
 
 // parseTags はstructに振ってあるprotowireタグを読み取ってmapに変換する
@@ -42,7 +43,11 @@ func parseTags(v interface{}) (map[uint32]structTag, error) {
 		if tp > 7 {
 			return nil, errors.New("invalid protowire structTag, largest type is 7")
 		}
-		tags[uint32(fieldNum)] = structTag{tp: uint8(tp), structFieldNum: i}
+		zigzag := false
+		if len(t) == 3 && t[2] == "zigzag" {
+			zigzag = true
+		}
+		tags[uint32(fieldNum)] = structTag{tp: uint8(tp), structFieldNum: i, zigzag: zigzag}
 	}
 	return tags, nil
 }
@@ -82,7 +87,19 @@ func Unmarshal(b []byte, v interface{}) error {
 			}
 			target := reflect.ValueOf(v).Elem().Field(st.structFieldNum)
 			switch target.Interface().(type) {
-			case int64, int32, int16, int8, int:
+			case int64:
+				i := int64(f)
+				if st.zigzag {
+					i = int64((uint64(i) >> 1) ^ uint64(((i&1)<<63)>>63))
+				}
+				target.SetInt(i)
+			case int32:
+				i := int32(f)
+				if st.zigzag {
+					i = int32((uint32(i) >> 1) ^ uint32(((i&1)<<31)>>31))
+				}
+				target.SetInt(int64(i))
+			case int16, int8, int:
 				target.SetInt(int64(f))
 			case uint64, uint32, uint16, uint8, uint:
 				target.SetUint(f)
