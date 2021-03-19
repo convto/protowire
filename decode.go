@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	OrverFlowErr = errors.New("over flow")
-	UnknownType  = errors.New("unknown type")
+	OverflowErr    = errors.New("over flow")
+	UnknownTypeErr = errors.New("unknown type")
 )
 
 type structTag struct {
@@ -67,7 +67,7 @@ func Unmarshal(b []byte, v interface{}) error {
 		b = b[n:]
 		// 仕様でtype, field_number合わせて32bitまでなので超えてたらエラー
 		if tag > math.MaxUint32 {
-			return fmt.Errorf("invalid structTag size: %w", OrverFlowErr)
+			return fmt.Errorf("invalid structTag size: %w", OverflowErr)
 		}
 		// 下位3bitはtype, それ以外はfield_number
 		fieldNum := uint32(tag >> 3)
@@ -125,7 +125,7 @@ func Unmarshal(b []byte, v interface{}) error {
 				return fmt.Errorf("unsupported type of length-delimited: %s", target.Type().String())
 			}
 		default:
-			return fmt.Errorf("unsupported type: %d, err: %w", tp, UnknownType)
+			return fmt.Errorf("unsupported type: %d, err: %w", tp, UnknownTypeErr)
 		}
 	}
 	return nil
@@ -137,7 +137,7 @@ func readVarint(b []byte) (v uint64, n int, err error) {
 	for shift := uint(0); ; shift += 7 {
 		// 64bitこえたらoverflow
 		if shift >= 64 {
-			return 0, 0, fmt.Errorf("failed to read varint: %w", OrverFlowErr)
+			return 0, 0, fmt.Errorf("failed to read varint: %w", OverflowErr)
 		}
 		// 対象のbyteの下位7bitを読み取ってvにつめていく
 		target := b[n]
