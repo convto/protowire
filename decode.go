@@ -1,6 +1,7 @@
 package protowire
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math"
@@ -107,6 +108,20 @@ func Unmarshal(b []byte, v interface{}) error {
 			default:
 				return fmt.Errorf("unsupported type of varint: %s", target.Type().String())
 			}
+		case 1:
+			f := binary.LittleEndian.Uint64(b)
+			b = b[8:]
+			target := reflect.ValueOf(v).Elem().Field(st.structFieldNum)
+			switch target.Interface().(type) {
+			case int64:
+				target.SetInt(int64(f))
+			case uint64:
+				target.SetUint(f)
+			case float64:
+				target.SetFloat(math.Float64frombits(f))
+			default:
+				return fmt.Errorf("unsupported type of 64-bit: %s", target.Type().String())
+			}
 		case 2:
 			byteLen, n, err := readVarint(b)
 			if err != nil {
@@ -123,6 +138,20 @@ func Unmarshal(b []byte, v interface{}) error {
 				target.SetBytes(val)
 			default:
 				return fmt.Errorf("unsupported type of length-delimited: %s", target.Type().String())
+			}
+		case 5:
+			f := binary.LittleEndian.Uint32(b)
+			b = b[4:]
+			target := reflect.ValueOf(v).Elem().Field(st.structFieldNum)
+			switch target.Interface().(type) {
+			case int32:
+				target.SetInt(int64(int32(f)))
+			case uint32:
+				target.SetUint(uint64(f))
+			case float32:
+				target.SetFloat(float64(math.Float32frombits(f)))
+			default:
+				return fmt.Errorf("unsupported type of 64-bit: %s", target.Type().String())
 			}
 		default:
 			return fmt.Errorf("unsupported type: %d, err: %w", tp, UnknownTypeErr)

@@ -93,6 +93,18 @@ func TestUnmarshal(t *testing.T) {
 		Str   string `protowire:"1,2"`
 		Bytes []byte `protowire:"2,2"`
 	}
+	test64BitBin, _ := hex.DecodeString("09393000000000000011cef6feffffffffff191bde8342cac0f33f")
+	type test64Bit struct {
+		Fixed64  uint64  `protowire:"1,1"`
+		Sfixed64 int64   `protowire:"2,1,zigzag"`
+		Double   float64 `protowire:"3,1"`
+	}
+	test32BitBin, _ := hex.DecodeString("0d3930000015cef6feff1d52069e3f")
+	type test32Bit struct {
+		Fixed32  uint32  `protowire:"1,5"`
+		Sfixed32 int32   `protowire:"2,5,zigzag"`
+		Float    float32 `protowire:"3,5"`
+	}
 
 	type args struct {
 		b []byte
@@ -136,6 +148,30 @@ func TestUnmarshal(t *testing.T) {
 			want: &testLengthDelimited{
 				Str:   "これはてすとだよ",
 				Bytes: []byte{0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA},
+			},
+		},
+		{
+			name: "64-bitの検証バイナリ",
+			args: args{
+				b: test64BitBin,
+				v: &test64Bit{},
+			},
+			want: &test64Bit{
+				Fixed64:  12345,
+				Sfixed64: -67890,
+				Double:   1.23456789,
+			},
+		},
+		{
+			name: "32-bitの検証バイナリ",
+			args: args{
+				b: test32BitBin,
+				v: &test32Bit{},
+			},
+			want: &test32Bit{
+				Fixed32:  12345,
+				Sfixed32: -67890,
+				Float:    1.23456789,
 			},
 		},
 	}
