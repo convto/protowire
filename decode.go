@@ -86,24 +86,24 @@ func Unmarshal(b []byte, v interface{}) error {
 			}
 			b = b[n:]
 			target := reflect.ValueOf(v).Elem().Field(st.structFieldNum)
-			switch target.Interface().(type) {
-			case int64:
+			switch target.Kind() {
+			case reflect.Int64:
 				i := int64(f)
 				if st.zigzag {
 					i = int64((uint64(i) >> 1) ^ uint64(((i&1)<<63)>>63))
 				}
 				target.SetInt(i)
-			case int32:
+			case reflect.Int32:
 				i := int32(f)
 				if st.zigzag {
 					i = int32((uint32(i) >> 1) ^ uint32(((i&1)<<31)>>31))
 				}
 				target.SetInt(int64(i))
-			case int16, int8, int:
+			case reflect.Int16, reflect.Int8, reflect.Int:
 				target.SetInt(int64(f))
-			case uint64, uint32, uint16, uint8, uint:
+			case reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8, reflect.Uint:
 				target.SetUint(f)
-			case bool:
+			case reflect.Bool:
 				target.SetBool(f&1 == 1)
 			default:
 				return fmt.Errorf("unsupported type of varint: %s", target.Type().String())
@@ -112,12 +112,12 @@ func Unmarshal(b []byte, v interface{}) error {
 			f := binary.LittleEndian.Uint64(b)
 			b = b[8:]
 			target := reflect.ValueOf(v).Elem().Field(st.structFieldNum)
-			switch target.Interface().(type) {
-			case int64:
+			switch target.Kind() {
+			case reflect.Int64:
 				target.SetInt(int64(f))
-			case uint64:
+			case reflect.Uint64:
 				target.SetUint(f)
-			case float64:
+			case reflect.Float64:
 				target.SetFloat(math.Float64frombits(f))
 			default:
 				return fmt.Errorf("unsupported type of 64-bit: %s", target.Type().String())
@@ -131,10 +131,13 @@ func Unmarshal(b []byte, v interface{}) error {
 			val := b[:byteLen]
 			target := reflect.ValueOf(v).Elem().Field(st.structFieldNum)
 			b = b[int(byteLen):]
-			switch target.Interface().(type) {
-			case string:
+			switch target.Kind() {
+			case reflect.String:
 				target.SetString(string(val))
-			case []byte:
+			case reflect.Slice:
+				if target.Type() != reflect.TypeOf([]byte(nil)) {
+					return fmt.Errorf("unsupported type of length-delimited: %s", target.Type().String())
+				}
 				target.SetBytes(val)
 			default:
 				return fmt.Errorf("unsupported type of length-delimited: %s", target.Type().String())
@@ -143,12 +146,12 @@ func Unmarshal(b []byte, v interface{}) error {
 			f := binary.LittleEndian.Uint32(b)
 			b = b[4:]
 			target := reflect.ValueOf(v).Elem().Field(st.structFieldNum)
-			switch target.Interface().(type) {
-			case int32:
+			switch target.Kind() {
+			case reflect.Int32:
 				target.SetInt(int64(int32(f)))
-			case uint32:
+			case reflect.Uint32:
 				target.SetUint(uint64(f))
-			case float32:
+			case reflect.Float32:
 				target.SetFloat(float64(math.Float32frombits(f)))
 			default:
 				return fmt.Errorf("unsupported type of 64-bit: %s", target.Type().String())
