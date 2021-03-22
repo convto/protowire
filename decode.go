@@ -146,6 +146,12 @@ func Unmarshal(b []byte, v interface{}) error {
 					return fmt.Errorf("unsupported type of length-delimited: %s", rv.Type().String())
 				}
 				rv.SetBytes(val)
+			case reflect.Struct:
+				ptr := reflect.New(rv.Type())
+				if err := Unmarshal(val, ptr.Interface()); err != nil {
+					return fmt.Errorf("failed to read enbeded field: %w", err)
+				}
+				rv.Set(reflect.Indirect(ptr))
 			default:
 				return fmt.Errorf("unsupported type of length-delimited: %s", rv.Type().String())
 			}
