@@ -8,15 +8,15 @@ import (
 
 func Test_parseTags(t *testing.T) {
 	type tagTest struct {
-		Age  int    `protowire:"1,0"`
-		Name string `protowire:"2,2"`
-		Max  string `protowire:"536870911,7"`
+		Age  int32  `protowire:"1,0,int32"`
+		Name string `protowire:"2,2,string"`
+		Max  string `protowire:"536870911,2,string"`
 	}
 	type invalidFieldNumber struct {
-		Age int `protowire:"536870912,0"`
+		Age int32 `protowire:"536870912,0,int32"`
 	}
 	type invalidType struct {
-		Age int `protowire:"1,8"`
+		Age int32 `protowire:"1,8,xxx"`
 	}
 
 	tests := []struct {
@@ -30,16 +30,22 @@ func Test_parseTags(t *testing.T) {
 			v:    &tagTest{},
 			want: map[uint32]structTag{
 				1: {
-					tp:             0,
 					structFieldNum: 0,
+					wt:             wireVarint,
+					pt:             protoInt32,
+					ft:             fieldDefault,
 				},
 				2: {
-					tp:             2,
 					structFieldNum: 1,
+					wt:             wireLengthDelimited,
+					pt:             protoString,
+					ft:             fieldDefault,
 				},
 				536870911: {
-					tp:             7,
 					structFieldNum: 2,
+					wt:             wireLengthDelimited,
+					pt:             protoString,
+					ft:             fieldDefault,
 				},
 			},
 		},
@@ -64,7 +70,7 @@ func Test_parseTags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseTags(tt.v)
+			got, err := parseStructTags(tt.v)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseTags() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -79,42 +85,42 @@ func Test_parseTags(t *testing.T) {
 func TestUnmarshal(t *testing.T) {
 	testVarintBin, _ := hex.DecodeString("08b96010b292041801")
 	type testVarint struct {
-		Int32   int32 `protowire:"1,0"`
-		Int64   int64 `protowire:"2,0"`
-		Boolean bool  `protowire:"3,0"`
+		Int32   int32 `protowire:"1,0,int32"`
+		Int64   int64 `protowire:"2,0,int64"`
+		Boolean bool  `protowire:"3,0,bool"`
 	}
 	testVarintZigzagBin, _ := hex.DecodeString("08f1c00110e3a408")
 	type testVarintZigzag struct {
-		Sint32 int32 `protowire:"1,0,zigzag"`
-		Sint64 int64 `protowire:"2,0,zigzag"`
+		Sint32 int32 `protowire:"1,0,sint32"`
+		Sint64 int64 `protowire:"2,0,sint64"`
 	}
 	testLengthDelimitedBin, _ := hex.DecodeString("0a18e38193e3828ce381afe381a6e38199e381a8e381a0e382881206ffeeddccbbaa")
 	type testLengthDelimited struct {
-		Str   string `protowire:"1,2"`
-		Bytes []byte `protowire:"2,2"`
+		Str   string `protowire:"1,2,string"`
+		Bytes []byte `protowire:"2,2,bytes"`
 	}
 	test64BitBin, _ := hex.DecodeString("09393000000000000011cef6feffffffffff191bde8342cac0f33f")
 	type test64Bit struct {
-		Fixed64  uint64  `protowire:"1,1"`
-		Sfixed64 int64   `protowire:"2,1,zigzag"`
-		Double   float64 `protowire:"3,1"`
+		Fixed64  uint64  `protowire:"1,1,fixed64"`
+		Sfixed64 int64   `protowire:"2,1,sfixed64"`
+		Double   float64 `protowire:"3,1,double"`
 	}
 	test32BitBin, _ := hex.DecodeString("0d3930000015cef6feff1d52069e3f")
 	type test32Bit struct {
-		Fixed32  uint32  `protowire:"1,5"`
-		Sfixed32 int32   `protowire:"2,5,zigzag"`
-		Float    float32 `protowire:"3,5"`
+		Fixed32  uint32  `protowire:"1,5,fixed32"`
+		Sfixed32 int32   `protowire:"2,5,sfixed32"`
+		Float    float32 `protowire:"3,5,float"`
 	}
 	testEmbedBin, _ := hex.DecodeString("0a1808c79fffffffffffffff0110ceedfbffffffffffff01180112260a1ce38193e3828ce381afe381a6e38199e381a8e381a0e38288f09f909b1206ffeeddccbbaa1a1b09393000000000000011cef6feffffffffff191bde8342cac0f33f")
 	type testEmbed struct {
-		TestVarint          testVarint          `protowire:"1,2"`
-		TestLengthDelimited testLengthDelimited `protowire:"2,2"`
-		Test64Bit           test64Bit           `protowire:"3,2"`
+		TestVarint          testVarint          `protowire:"1,2,embed"`
+		TestLengthDelimited testLengthDelimited `protowire:"2,2,embed"`
+		Test64Bit           test64Bit           `protowire:"3,2,embed"`
 	}
 	type testEmbedHasPtrFields struct {
-		TestVarint          *testVarint          `protowire:"1,2"`
-		TestLengthDelimited *testLengthDelimited `protowire:"2,2"`
-		Test64Bit           *test64Bit           `protowire:"3,2"`
+		TestVarint          *testVarint          `protowire:"1,2,embed"`
+		TestLengthDelimited *testLengthDelimited `protowire:"2,2,embed"`
+		Test64Bit           *test64Bit           `protowire:"3,2,embed"`
 	}
 
 	type args struct {
