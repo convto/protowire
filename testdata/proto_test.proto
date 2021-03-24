@@ -1,0 +1,37 @@
+syntax = "proto3";
+package testdata;
+option go_package = "../testdata";
+
+message TestVarint {
+    int32 Int32 = 1;
+    int64 Int64 = 2;
+    bool  Boolean = 3;
+}
+
+message TestVarintZigzag {
+    sint32 Sint32 = 1;
+    sint64 Sint64 = 2;
+}
+
+message TestLengthDelimited {
+    string Str   = 1;
+    bytes  Bytes = 2;
+}
+
+message Test64Bit {
+    fixed64 Fixed64 = 1;
+    sfixed64 Sfixed64 = 2;
+    double Double = 3;
+}
+
+message Test32Bit {
+    fixed32 Fixed32 = 1;
+    sfixed32 Sfixed32 = 2;
+    float Float = 3;
+}
+
+message TestEmbed {
+    TestVarint embedVarint = 1;
+    TestLengthDelimited embedLengthDelimited = 2;
+    Test64Bit embed64Bit = 3;
+}
