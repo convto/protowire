@@ -35,3 +35,12 @@ message TestEmbed {
     TestLengthDelimited embedLengthDelimited = 2;
     Test64Bit embed64Bit = 3;
 }
+
+message TestRepeated {
+    repeated int64 Int64 = 1;
+    repeated fixed64 Fixed64 = 2;
+    repeated fixed32 Fixed32 = 3;
+    repeated string Str = 4;
+    repeated bytes Bytes = 5;
+    repeated TestLengthDelimited TestLengthDelimited = 6;
+}

@@ -21,7 +21,7 @@ func parseStructTags(v interface{}) (map[uint32]structTag, error) {
 	if reflect.ValueOf(v).Kind() != reflect.Ptr {
 		return nil, errors.New("struct must be a pointer")
 	}
-	rt := reflect.Indirect(reflect.ValueOf(v)).Type()
+	rt := reflect.TypeOf(v).Elem()
 	fieldSize := rt.NumField()
 	tags := make(map[uint32]structTag, fieldSize)
 	for i := 0; i < fieldSize; i++ {

@@ -4,4 +4,4 @@ help: ## Print help
 
 gen-proto: ## generate golang implementation
 	@type protoc-gen-go > /dev/null 2>&1 || go install google.golang.org/protobuf/cmd/protoc-gen-go
-	protoc --go_out=. test.proto
+	protoc --go_out=. proto_test.proto

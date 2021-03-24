@@ -1,5 +1,7 @@
 package protowire
 
+import "fmt"
+
 type wireType uint8
 
 const (
@@ -10,6 +12,13 @@ const (
 	wireEndGroup
 	wireFixed32
 )
+
+func (wt wireType) Packable() bool {
+	if wt == wireVarint || wt == wireFixed32 || wt == wireFixed64 {
+		return true
+	}
+	return false
+}
 
 type protoType string
 
@@ -44,10 +53,26 @@ func (pt protoType) isZigzag() bool {
 	return false
 }
 
+func (pt protoType) toWireType() (wireType, error) {
+	switch pt {
+	case protoInt32, protoInt64, protoUint32, protoUint64, protoSint32, protoSint64, protoBool, protoEnum:
+		return wireVarint, nil
+	case protoFixed64, protoSfixed64, protoDouble:
+		return wireFixed64, nil
+	case protoString, protoBytes, protoEmbed:
+		return wireLengthDelimited, nil
+	case protoFixed32, protoSfixed32, protoFloat:
+		return wireFixed32, nil
+	default:
+		return 0, fmt.Errorf("unknown proto type: %s", pt)
+	}
+}
+
 type fieldType string
 
 const (
 	fieldDefault  fieldType = "default"
 	fieldPacked   fieldType = "packed"
 	fieldRequired fieldType = "required"
+	fieldOneOf    fieldType = "oneof"
 )

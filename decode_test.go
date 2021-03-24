@@ -82,6 +82,52 @@ func TestUnmarshal(t *testing.T) {
 		Test64Bit           *test64Bit           `protowire:"3,2,embed"`
 	}
 
+	testRepeatedBin, _ := proto.Marshal(&testdata.TestRepeated{
+		Int64: []int64{
+			12345,
+			67890,
+			-12345,
+			-67890,
+		},
+		Fixed64: []uint64{
+			12345,
+			67890,
+		},
+		Fixed32: []uint32{
+			12345,
+			67890,
+		},
+		Str: []string{
+			"これはてすとです",
+			"this is test",
+			"🐛",
+		},
+		Bytes: [][]byte{
+			{0x00, 0x11, 0x22, 0x33},
+			{0x44, 0x55, 0x66, 0x77},
+			{0x88, 0x99, 0xAA, 0xBB},
+			{0xCC, 0xDD, 0xEE, 0xFF},
+		},
+		TestLengthDelimited: []*testdata.TestLengthDelimited{
+			{
+				Str:   "これはてすとだよ🐛",
+				Bytes: []byte{0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA},
+			},
+			{
+				Str:   "this is test",
+				Bytes: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66},
+			},
+		},
+	})
+	type testRepeated struct {
+		Int64               []int64                `protowire:"1,2,int64,packed"`
+		Fixed64             []uint64               `protowire:"2,2,fixed64,packed"`
+		Fixed32             []uint32               `protowire:"3,2,fixed32,packed"`
+		Str                 []string               `protowire:"4,2,string"`
+		Bytes               [][]byte               `protowire:"5,2,bytes"`
+		TestLengthDelimited []*testLengthDelimited `protowire:"6,2,embed"`
+	}
+
 	type args struct {
 		b []byte
 		v interface{}
@@ -170,6 +216,50 @@ func TestUnmarshal(t *testing.T) {
 					Fixed64:  12345,
 					Sfixed64: -67890,
 					Double:   1.23456789,
+				},
+			},
+		},
+		{
+			name: "Repeatedの検証バイナリ",
+			args: args{
+				b: testRepeatedBin,
+				v: &testRepeated{},
+			},
+			want: &testRepeated{
+				Int64: []int64{
+					12345,
+					67890,
+					-12345,
+					-67890,
+				},
+				Fixed64: []uint64{
+					12345,
+					67890,
+				},
+				Fixed32: []uint32{
+					12345,
+					67890,
+				},
+				Str: []string{
+					"これはてすとです",
+					"this is test",
+					"🐛",
+				},
+				Bytes: [][]byte{
+					{0x00, 0x11, 0x22, 0x33},
+					{0x44, 0x55, 0x66, 0x77},
+					{0x88, 0x99, 0xAA, 0xBB},
+					{0xCC, 0xDD, 0xEE, 0xFF},
+				},
+				TestLengthDelimited: []*testLengthDelimited{
+					{
+						Str:   "これはてすとだよ🐛",
+						Bytes: []byte{0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA},
+					},
+					{
+						Str:   "this is test",
+						Bytes: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66},
+					},
 				},
 			},
 		},
