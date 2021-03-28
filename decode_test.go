@@ -128,6 +128,16 @@ func TestUnmarshal(t *testing.T) {
 		TestLengthDelimited []*testLengthDelimited `protowire:"6,2,embed"`
 	}
 
+	testOneOfBin, _ := proto.Marshal(&testdata.TestOneOf{
+		Name: "test oneof",
+		TestIdentifier: &testdata.TestOneOf_Id{
+			Id: "identifier string",
+		},
+		TestMessage: &testdata.TestOneOf_TextMessage{
+			TextMessage: "message string",
+		},
+	})
+
 	type args struct {
 		b []byte
 		v interface{}
@@ -260,6 +270,22 @@ func TestUnmarshal(t *testing.T) {
 						Str:   "this is test",
 						Bytes: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66},
 					},
+				},
+			},
+		},
+		{
+			name: "oneofの検証バイナリ",
+			args: args{
+				b: testOneOfBin,
+				v: &testOneOf{},
+			},
+			want: &testOneOf{
+				Name: "test oneof",
+				TestIdentifier: &TestOneOf_Id{
+					Id: "identifier string",
+				},
+				TestMessage: &TestOneOf_TextMessage{
+					TextMessage: "message string",
 				},
 			},
 		},

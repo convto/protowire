@@ -71,8 +71,7 @@ func (pt protoType) toWireType() (wireType, error) {
 type fieldType string
 
 const (
-	fieldDefault  fieldType = "default"
+	fieldOptional fieldType = "optional"
 	fieldPacked   fieldType = "packed"
-	fieldRequired fieldType = "required"
 	fieldOneOf    fieldType = "oneof"
 )

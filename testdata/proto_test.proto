@@ -44,3 +44,15 @@ message TestRepeated {
     repeated bytes Bytes = 5;
     repeated TestLengthDelimited TestLengthDelimited = 6;
 }
+
+message TestOneOf {
+    string name = 1;
+    oneof TestIdentifier {
+        string id = 2;
+        string email = 3;
+    }
+    oneof TestMessage {
+        string text_message = 4;
+        bytes binary_message = 5;
+    }
+}
