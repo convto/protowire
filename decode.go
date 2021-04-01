@@ -72,8 +72,8 @@ func parseTag(b []byte) (fn uint32, wt wireType, n int, err error) {
 // parseValue は与えられたタグ情報やwire typeをもとにバイト列をパースします
 func parseValue(sf structField, wt wireType, b []byte) (n int, err error) {
 	// バイナリから読み取ったwire typeは基本的にstruct tagのwire typeと一致する
-	// packed repeated fieldsの場合はstruct tagのwire typeはlength delimitedもありうる
-	if wt != sf.wt && (sf.wt == wireLengthDelimited && sf.ft == fieldPacked) {
+	// structのフィールド定義がpacked repeated fieldsの場合はwire typeはlength delimitedもありうるので一致していなくても許容する
+	if wt != sf.wt && !sf.fts.Has(fieldPacked) {
 		return 0, fmt.Errorf("wrong wire type, struct wire tag: %d, binary wire tag: %d", sf.wt, wt)
 	}
 
@@ -83,8 +83,10 @@ func parseValue(sf structField, wt wireType, b []byte) (n int, err error) {
 	}
 	switch wt {
 	case wireVarint:
-		// packed repeated fieldsだった場合は下位互換のためlength delimitedでなくとも要素数1のsliceとしてパースする
-		if ptwt == wireVarint && sf.ft == fieldPacked && sf.rv.Kind() == reflect.Slice {
+		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースする
+		if sf.fts.Has(fieldPacked) && sf.wt == wireLengthDelimited {
+
+			//if ptwt == wireVarint && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
 			n, err := parseVarint(sf.pt, elem, b)
 			if err != nil {
@@ -95,8 +97,8 @@ func parseValue(sf structField, wt wireType, b []byte) (n int, err error) {
 		}
 		return parseVarint(sf.pt, sf.rv, b)
 	case wireFixed64:
-		// packed repeated fieldsだった場合は下位互換のためlength delimitedでなくとも要素数1のsliceとしてパースする
-		if ptwt == wireFixed64 && sf.ft == fieldPacked && sf.rv.Kind() == reflect.Slice {
+		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースする
+		if ptwt == wireFixed64 && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
 			n, err := parseFixed64(sf.pt, elem, b)
 			if err != nil {
@@ -113,17 +115,17 @@ func parseValue(sf structField, wt wireType, b []byte) (n int, err error) {
 		// >Only repeated fields of primitive numeric types (types which use the varint, 32-bit, or 64-bit wire types) can be declared "packed".
 		if sf.rv.Kind() == reflect.Slice && sf.rv.Type() != reflect.TypeOf([]byte(nil)) && !ptwt.Packable() {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
-			n, err := parseLengthDelimited(sf.pt, sf.ft, elem, b)
+			n, err := parseLengthDelimited(sf.pt, sf.fts, elem, b)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read repeatable length-delimited field: %w", err)
 			}
 			sf.rv.Set(reflect.Append(sf.rv, elem))
 			return n, nil
 		}
-		return parseLengthDelimited(sf.pt, sf.ft, sf.rv, b)
+		return parseLengthDelimited(sf.pt, sf.fts, sf.rv, b)
 	case wireFixed32:
-		// packed repeated fieldsだった場合は下位互換のためlength delimitedでなくとも要素数1のsliceとしてパースする
-		if ptwt == wireFixed32 && sf.ft == fieldPacked && sf.rv.Kind() == reflect.Slice {
+		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースする
+		if ptwt == wireFixed32 && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
 			n, err := parseFixed32(sf.pt, elem, b)
 			if err != nil {
@@ -187,7 +189,7 @@ func parseFixed64(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 
 // parseLengthDelimited はwire typeがlength delimitedな場合の値の読み取りをします
 // 先頭に可変長バイト列としてバイト長がエンコードされており、そのあとにデータが格納されています
-func parseLengthDelimited(pt protoType, ft fieldType, rv reflect.Value, b []byte) (n int, err error) {
+func parseLengthDelimited(pt protoType, fts fieldTypes, rv reflect.Value, b []byte) (n int, err error) {
 	byteLen, n, err := readVarint(b)
 	if err != nil {
 		return 0, fmt.Errorf("failed to read varint field: %w", err)
@@ -207,7 +209,7 @@ func parseLengthDelimited(pt protoType, ft fieldType, rv reflect.Value, b []byte
 		if err := Unmarshal(val, rv.Interface()); err != nil {
 			return 0, fmt.Errorf("failed to read enbed field: %w", err)
 		}
-	case ft == fieldPacked && rv.Kind() == reflect.Slice:
+	case fts.Has(fieldPacked) && fts.Has(fieldRepeated) && rv.Kind() == reflect.Slice:
 		// packed repeated fieldsの場合は該当フィールドのproto定義上の型情報を元にどのwire typeとしてパースすればよいか判断する
 		ptwt, err := pt.toWireType()
 		if err != nil {

@@ -15,9 +15,9 @@ func TestUnmarshal(t *testing.T) {
 		Boolean: true,
 	})
 	type testVarint struct {
-		Int32   int32 `protowire:"1,0,int32"`
-		Int64   int64 `protowire:"2,0,int64"`
-		Boolean bool  `protowire:"3,0,bool"`
+		Int32   int32 `protowire:"1,0,int32,optional"`
+		Int64   int64 `protowire:"2,0,int64,optional"`
+		Boolean bool  `protowire:"3,0,bool,optional"`
 	}
 
 	testVarintZigzagBin, _ := proto.Marshal(&testdata.TestVarintZigzag{
@@ -25,8 +25,8 @@ func TestUnmarshal(t *testing.T) {
 		Sint64: -67890,
 	})
 	type testVarintZigzag struct {
-		Sint32 int32 `protowire:"1,0,sint32"`
-		Sint64 int64 `protowire:"2,0,sint64"`
+		Sint32 int32 `protowire:"1,0,sint32,optional"`
+		Sint64 int64 `protowire:"2,0,sint64,optional"`
 	}
 
 	testLengthDelimitedBin, _ := proto.Marshal(&testdata.TestLengthDelimited{
@@ -34,8 +34,8 @@ func TestUnmarshal(t *testing.T) {
 		Bytes: []byte{0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA},
 	})
 	type testLengthDelimited struct {
-		Str   string `protowire:"1,2,string"`
-		Bytes []byte `protowire:"2,2,bytes"`
+		Str   string `protowire:"1,2,string,optional"`
+		Bytes []byte `protowire:"2,2,bytes,optional"`
 	}
 
 	test64BitBin, _ := proto.Marshal(&testdata.Test64Bit{
@@ -44,9 +44,9 @@ func TestUnmarshal(t *testing.T) {
 		Double:   1.23456789,
 	})
 	type test64Bit struct {
-		Fixed64  uint64  `protowire:"1,1,fixed64"`
-		Sfixed64 int64   `protowire:"2,1,sfixed64"`
-		Double   float64 `protowire:"3,1,double"`
+		Fixed64  uint64  `protowire:"1,1,fixed64,optional"`
+		Sfixed64 int64   `protowire:"2,1,sfixed64,optional"`
+		Double   float64 `protowire:"3,1,double,optional"`
 	}
 
 	test32BitBin, _ := proto.Marshal(&testdata.Test32Bit{
@@ -55,9 +55,9 @@ func TestUnmarshal(t *testing.T) {
 		Float:    1.23456789,
 	})
 	type test32Bit struct {
-		Fixed32  uint32  `protowire:"1,5,fixed32"`
-		Sfixed32 int32   `protowire:"2,5,sfixed32"`
-		Float    float32 `protowire:"3,5,float"`
+		Fixed32  uint32  `protowire:"1,5,fixed32,optional"`
+		Sfixed32 int32   `protowire:"2,5,sfixed32,optional"`
+		Float    float32 `protowire:"3,5,float,optional"`
 	}
 
 	testEmbedBin, _ := proto.Marshal(&testdata.TestEmbed{
@@ -77,9 +77,9 @@ func TestUnmarshal(t *testing.T) {
 		},
 	})
 	type testEmbed struct {
-		TestVarint          *testVarint          `protowire:"1,2,embed"`
-		TestLengthDelimited *testLengthDelimited `protowire:"2,2,embed"`
-		Test64Bit           *test64Bit           `protowire:"3,2,embed"`
+		TestVarint          *testVarint          `protowire:"1,2,embed,optional"`
+		TestLengthDelimited *testLengthDelimited `protowire:"2,2,embed,optional"`
+		Test64Bit           *test64Bit           `protowire:"3,2,embed,optional"`
 	}
 
 	testRepeatedBin, _ := proto.Marshal(&testdata.TestRepeated{
@@ -120,12 +120,12 @@ func TestUnmarshal(t *testing.T) {
 		},
 	})
 	type testRepeated struct {
-		Int64               []int64                `protowire:"1,2,int64,packed"`
-		Fixed64             []uint64               `protowire:"2,2,fixed64,packed"`
-		Fixed32             []uint32               `protowire:"3,2,fixed32,packed"`
-		Str                 []string               `protowire:"4,2,string"`
-		Bytes               [][]byte               `protowire:"5,2,bytes"`
-		TestLengthDelimited []*testLengthDelimited `protowire:"6,2,embed"`
+		Int64               []int64                `protowire:"1,2,int64,packed,repeated"`
+		Fixed64             []uint64               `protowire:"2,2,fixed64,packed,repeated"`
+		Fixed32             []uint32               `protowire:"3,2,fixed32,packed,repeated"`
+		Str                 []string               `protowire:"4,2,string,repeated"`
+		Bytes               [][]byte               `protowire:"5,2,bytes,repeated"`
+		TestLengthDelimited []*testLengthDelimited `protowire:"6,2,embed,repeated"`
 	}
 
 	testOneOfBin, _ := proto.Marshal(&testdata.TestOneOf{

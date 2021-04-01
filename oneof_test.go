@@ -1,7 +1,7 @@
 package protowire
 
 type testOneOf struct {
-	Name           string                     `protowire:"1,2,string"`
+	Name           string                     `protowire:"1,2,string,optional"`
 	TestIdentifier isTestOneOf_TestIdentifier `protowire_oneof:"true"`
 	TestMessage    isTestOneOf_TestMessage    `protowire_oneof:"true"`
 }

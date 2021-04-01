@@ -1,6 +1,8 @@
 package protowire
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type wireType uint8
 
@@ -8,8 +10,8 @@ const (
 	wireVarint wireType = iota
 	wireFixed64
 	wireLengthDelimited
-	wireStartGroup
-	wireEndGroup
+	// wireStartGroup unsupported wire type
+	// wireEndGroup unsupported wire type
 	wireFixed32
 )
 
@@ -70,8 +72,39 @@ func (pt protoType) toWireType() (wireType, error) {
 
 type fieldType string
 
+func newFieldType(s string) (fieldType, error) {
+	switch ft := fieldType(s); ft {
+	case fieldOptional, fieldPacked, fieldRepeated, fieldOneOf:
+		return ft, nil
+	default:
+		return "", fmt.Errorf("unsupported field type: %s", s)
+	}
+}
+
 const (
 	fieldOptional fieldType = "optional"
 	fieldPacked   fieldType = "packed"
+	fieldRepeated fieldType = "repeated"
 	fieldOneOf    fieldType = "oneof"
 )
+
+type fieldTypes []fieldType
+
+func (fs fieldTypes) Has(ft fieldType) bool {
+	for _, f := range fs {
+		if f == ft {
+			return true
+		}
+	}
+	return false
+}
+
+func (fs fieldTypes) validate() error {
+	if fs.Has(fieldOneOf) && fs.Has(fieldRepeated) {
+		return fmt.Errorf("if field types has oneof, field type repeated can not set: %s", fs)
+	}
+	if fs.Has(fieldPacked) && !fs.Has(fieldRepeated) {
+		return fmt.Errorf("if field types has packed, field types must have repeated: %s", fs)
+	}
+	return nil
+}
