@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Test_parseProtoBind(t *testing.T) {
+func Test_newProtoMetadata(t *testing.T) {
 	type tagTest struct {
 		Age  int32  `protowire:"1,0,int32,optional"`
 		Name string `protowire:"2,2,string,optional"`
@@ -24,13 +24,13 @@ func Test_parseProtoBind(t *testing.T) {
 	tests := []struct {
 		name    string
 		v       interface{}
-		want    protoBind
+		want    protoMetadata
 		wantErr bool
 	}{
 		{
 			name: "タグの値を読み取れる",
 			v:    &tagTest{},
-			want: protoBind{
+			want: protoMetadata{
 				fieldsByNumber: map[uint32]protoFieldMetadata{
 					1: {
 						wt:  wireVarint,
@@ -57,7 +57,7 @@ func Test_parseProtoBind(t *testing.T) {
 		{
 			name: "fieldTypeが複数の場合も読み取れる",
 			v:    &multipleFieldTypeTest{},
-			want: protoBind{
+			want: protoMetadata{
 				fieldsByNumber: map[uint32]protoFieldMetadata{
 					1: {
 						wt:  wireVarint,
@@ -72,7 +72,7 @@ func Test_parseProtoBind(t *testing.T) {
 		{
 			name: "タグにoneofが指定されていた場合はその実装なども読み取る",
 			v:    &testOneOf{},
-			want: protoBind{
+			want: protoMetadata{
 				fieldsByNumber: map[uint32]protoFieldMetadata{
 					1: {
 						wt:  wireLengthDelimited,
@@ -128,27 +128,27 @@ func Test_parseProtoBind(t *testing.T) {
 		{
 			name:    "vがポインタじゃないとエラー",
 			v:       tagTest{},
-			want:    protoBind{},
+			want:    protoMetadata{},
 			wantErr: true,
 		},
 		{
 			name:    "field numberが上限より大きいとエラー",
 			v:       &invalidFieldNumber{},
-			want:    protoBind{},
+			want:    protoMetadata{},
 			wantErr: true,
 		},
 		{
 			name:    "field numberが上限より大きいとエラー",
 			v:       &invalidType{},
-			want:    protoBind{},
+			want:    protoMetadata{},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseProtoBind(tt.v)
+			got, err := newProtoMetadata(tt.v)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("parseProtoBind() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("newProtoMetadata() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got.fieldsByNumber != nil {

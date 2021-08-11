@@ -8,7 +8,51 @@ import (
 	"strings"
 )
 
-const protoTag = "protowire"
+const (
+	protoOneOfTag = "protowire_oneof"
+	protoTag      = "protowire"
+)
+
+type protoMetadata struct {
+	fieldsByNumber map[uint32]protoFieldMetadata
+	oneOfsByNumber map[uint32]oneOfFieldMetadata
+}
+
+// newProtoMetadata はstructの情報を読み取り、wireのパースに必要な情報を生成する
+func newProtoMetadata(v interface{}) (protoMetadata, error) {
+	rt := reflect.TypeOf(v)
+	if rt.Kind() != reflect.Ptr {
+		return protoMetadata{}, errors.New("target value must be a pointer")
+	}
+	rt = reflect.TypeOf(v).Elem()
+	if rt.Kind() != reflect.Struct {
+		return protoMetadata{}, errors.New("target value must be a struct")
+	}
+	pb := protoMetadata{
+		fieldsByNumber: make(map[uint32]protoFieldMetadata),
+		oneOfsByNumber: make(map[uint32]oneOfFieldMetadata),
+	}
+	for i := 0; i < rt.NumField(); i++ {
+		f := rt.Field(i)
+		// protobuf_oneof タグには該当フィールドがoneofかどうかの情報が入る
+		if t := f.Tag.Get(protoOneOfTag); t == "true" {
+			oneOfFieldByNumber, err := getOneOfFieldMetadataByIface(reflect.ValueOf(v).Elem().Field(i))
+			if err != nil {
+				return protoMetadata{}, fmt.Errorf("failed to get oneof fields: %w", err)
+			}
+			for fn, of := range oneOfFieldByNumber {
+				pb.oneOfsByNumber[fn] = of
+			}
+			continue
+		}
+		fieldNum, sf, err := newProtoFieldMetadata(f, reflect.ValueOf(v).Elem().Field(i))
+		if err != nil {
+			return protoMetadata{}, fmt.Errorf("failed to create struct field: %w", err)
+		}
+		pb.fieldsByNumber[fieldNum] = sf
+	}
+	return pb, nil
+}
 
 // protoFieldMetadata は `protowire` タグの内容やそのフィールドの reflect.Value などの、wireのパースに必要なメタデータを表します
 type protoFieldMetadata struct {

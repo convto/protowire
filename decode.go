@@ -14,9 +14,9 @@ var (
 )
 
 func Unmarshal(b []byte, v interface{}) error {
-	pb, err := parseProtoBind(v)
+	pb, err := newProtoMetadata(v)
 	if err != nil {
-		return fmt.Errorf("failed to parse protoBind from input interface{}: %w", err)
+		return fmt.Errorf("failed to parse protoMetadata from input interface{}: %w", err)
 	}
 
 	for len(b) > 0 {
