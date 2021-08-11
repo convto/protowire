@@ -85,8 +85,6 @@ func bindBytes(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error) 
 	case wireVarint:
 		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースします
 		if sf.fts.Has(fieldPacked) && sf.wt == wireLengthDelimited {
-
-			//if ptwt == wireVarint && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
 			n, err := bindVarint(sf.pt, elem, b)
 			if err != nil {
