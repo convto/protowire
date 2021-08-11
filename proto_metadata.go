@@ -14,8 +14,8 @@ const (
 )
 
 type protoMetadata struct {
-	fieldsByNumber map[uint32]protoFieldMetadata
-	oneOfsByNumber map[uint32]oneOfFieldMetadata
+	fieldsByNumber map[fieldNumber]protoFieldMetadata
+	oneOfsByNumber map[fieldNumber]oneOfFieldMetadata
 }
 
 // newProtoMetadata はstructの情報を読み取り、wireのパースに必要な情報を生成する
@@ -29,8 +29,8 @@ func newProtoMetadata(v interface{}) (protoMetadata, error) {
 		return protoMetadata{}, errors.New("target value must be a struct")
 	}
 	pb := protoMetadata{
-		fieldsByNumber: make(map[uint32]protoFieldMetadata),
-		oneOfsByNumber: make(map[uint32]oneOfFieldMetadata),
+		fieldsByNumber: make(map[fieldNumber]protoFieldMetadata),
+		oneOfsByNumber: make(map[fieldNumber]oneOfFieldMetadata),
 	}
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
@@ -45,11 +45,11 @@ func newProtoMetadata(v interface{}) (protoMetadata, error) {
 			}
 			continue
 		}
-		fieldNum, sf, err := newProtoFieldMetadata(f, reflect.ValueOf(v).Elem().Field(i))
+		fn, sf, err := newProtoFieldMetadata(f, reflect.ValueOf(v).Elem().Field(i))
 		if err != nil {
 			return protoMetadata{}, fmt.Errorf("failed to create struct field: %w", err)
 		}
-		pb.fieldsByNumber[fieldNum] = sf
+		pb.fieldsByNumber[fn] = sf
 	}
 	return pb, nil
 }
@@ -64,16 +64,16 @@ type protoFieldMetadata struct {
 
 // newProtoFieldMetadata はstructに振られた `protowire` タグ情報や、
 // そのフィールドに値をSetするための reflect.Value 値などからmetadataを生成する
-func newProtoFieldMetadata(f reflect.StructField, rv reflect.Value) (uint32, protoFieldMetadata, error) {
+func newProtoFieldMetadata(f reflect.StructField, rv reflect.Value) (fieldNumber, protoFieldMetadata, error) {
 	t := strings.Split(f.Tag.Get(protoTag), ",")
 	if len(t) < 4 {
 		return 0, protoFieldMetadata{}, fmt.Errorf("invalid struct tag length, len: %d", len(t))
 	}
-	fieldNum, err := strconv.Atoi(t[0])
+	fn, err := strconv.Atoi(t[0])
 	if err != nil {
 		return 0, protoFieldMetadata{}, err
 	}
-	if fieldNum > 1<<29-1 {
+	if fn > 1<<29-1 {
 		return 0, protoFieldMetadata{}, errors.New("invalid protoFieldMetadata, largest field_number is 536,870,911")
 	}
 	wt, err := strconv.Atoi(t[1])
@@ -96,7 +96,7 @@ func newProtoFieldMetadata(f reflect.StructField, rv reflect.Value) (uint32, pro
 		fts: fts,
 		rv:  rv,
 	}
-	return uint32(fieldNum), sf, nil
+	return fieldNumber(fn), sf, nil
 }
 
 // oneOfFieldMetadata はoneofをパースするためにinterfaceやその実装の情報とstructのフィールド定義を持ちます
@@ -114,7 +114,7 @@ type oneOfFieldMetadata struct {
 // getOneOfFieldMetadataByIface はあるoneofフィールドに代入される可能性のあるすべての構造の情報を読み取ります
 // 実装上oneofのフィールドはinterfaceとなっており、その実装としていくつかのstructが存在することを想定しています
 // あるoneofフィールドを実装しているstructをすべて読み取り、そのstructのタグ情報や、値の代入のためのreflect.Valueの取得などを行います
-func getOneOfFieldMetadataByIface(iface reflect.Value) (map[uint32]oneOfFieldMetadata, error) {
+func getOneOfFieldMetadataByIface(iface reflect.Value) (map[fieldNumber]oneOfFieldMetadata, error) {
 	ifaceTyp := iface.Type()
 	if ifaceTyp.Kind() != reflect.Interface {
 		return nil, fmt.Errorf("oneof field type must be interface, but %s", ifaceTyp.Kind().String())
@@ -123,7 +123,7 @@ func getOneOfFieldMetadataByIface(iface reflect.Value) (map[uint32]oneOfFieldMet
 	if err != nil {
 		return nil, fmt.Errorf("failed to get %s implements: %w", ifaceTyp.String(), err)
 	}
-	oneOfsByNumber := make(map[uint32]oneOfFieldMetadata, len(rvs))
+	oneOfsByNumber := make(map[fieldNumber]oneOfFieldMetadata, len(rvs))
 	for _, rv := range rvs {
 		rt := rv.Type()
 		if rt.Kind() == reflect.Ptr {

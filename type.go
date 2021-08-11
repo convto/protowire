@@ -22,6 +22,8 @@ func (wt wireType) Packable() bool {
 	return false
 }
 
+type fieldNumber uint32
+
 type protoType string
 
 const (

@@ -54,7 +54,7 @@ func Unmarshal(b []byte, v interface{}) error {
 }
 
 // parseTag はfield numberとwire typeを読み取ります
-func parseTag(b []byte) (fn uint32, wt wireType, n int, err error) {
+func parseTag(b []byte) (fn fieldNumber, wt wireType, n int, err error) {
 	tag, n, err := readVarint(b)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to read varint field: %w", err)
@@ -64,7 +64,7 @@ func parseTag(b []byte) (fn uint32, wt wireType, n int, err error) {
 		return 0, 0, 0, fmt.Errorf("invalid tag size: %w", OverflowErr)
 	}
 	// 下位3bitはtype, それ以外はfield_number
-	fn = uint32(tag >> 3)
+	fn = fieldNumber(tag >> 3)
 	wt = wireType(tag & 0x7)
 	return fn, wt, n, nil
 }

@@ -31,7 +31,7 @@ func Test_newProtoMetadata(t *testing.T) {
 			name: "タグの値を読み取れる",
 			v:    &tagTest{},
 			want: protoMetadata{
-				fieldsByNumber: map[uint32]protoFieldMetadata{
+				fieldsByNumber: map[fieldNumber]protoFieldMetadata{
 					1: {
 						wt:  wireVarint,
 						pt:  protoInt32,
@@ -58,7 +58,7 @@ func Test_newProtoMetadata(t *testing.T) {
 			name: "fieldTypeが複数の場合も読み取れる",
 			v:    &multipleFieldTypeTest{},
 			want: protoMetadata{
-				fieldsByNumber: map[uint32]protoFieldMetadata{
+				fieldsByNumber: map[fieldNumber]protoFieldMetadata{
 					1: {
 						wt:  wireVarint,
 						pt:  protoInt32,
@@ -73,7 +73,7 @@ func Test_newProtoMetadata(t *testing.T) {
 			name: "タグにoneofが指定されていた場合はその実装なども読み取る",
 			v:    &testOneOf{},
 			want: protoMetadata{
-				fieldsByNumber: map[uint32]protoFieldMetadata{
+				fieldsByNumber: map[fieldNumber]protoFieldMetadata{
 					1: {
 						wt:  wireLengthDelimited,
 						pt:  protoString,
@@ -81,7 +81,7 @@ func Test_newProtoMetadata(t *testing.T) {
 						rv:  reflect.ValueOf(""),
 					},
 				},
-				oneOfsByNumber: map[uint32]oneOfFieldMetadata{
+				oneOfsByNumber: map[fieldNumber]oneOfFieldMetadata{
 					2: {
 						iface:     reflect.New(reflect.TypeOf((*isTestOneOf_TestIdentifier)(nil)).Elem()).Elem(),
 						implement: reflect.ValueOf(&TestOneOf_Id{}),
