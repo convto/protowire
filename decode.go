@@ -31,9 +31,9 @@ func Unmarshal(b []byte, v interface{}) error {
 			if !sf.rv.CanSet() {
 				return fmt.Errorf("cant't set field, field type: %s", sf.rv.Type().String())
 			}
-			n, err = parseValue(sf, wt, b)
+			n, err = bindBytes(sf, wt, b)
 			if err != nil {
-				return fmt.Errorf("failed to read value: %w", err)
+				return fmt.Errorf("failed to read field value: %w", err)
 			}
 			b = b[n:]
 		}
@@ -42,9 +42,9 @@ func Unmarshal(b []byte, v interface{}) error {
 			if !osf.protoFieldMetadata.rv.CanSet() || !osf.iface.CanSet() {
 				return fmt.Errorf("cant't set oneof field, field type: %s", osf.protoFieldMetadata.rv.Type().String())
 			}
-			n, err = parseValue(osf.protoFieldMetadata, wt, b)
+			n, err = bindBytes(osf.protoFieldMetadata, wt, b)
 			if err != nil {
-				return fmt.Errorf("failed to read oneof value: %w", err)
+				return fmt.Errorf("failed to read oneof field value: %w", err)
 			}
 			osf.iface.Set(osf.implement)
 			b = b[n:]
@@ -69,8 +69,8 @@ func parseTag(b []byte) (fn fieldNumber, wt wireType, n int, err error) {
 	return fn, wt, n, nil
 }
 
-// parseValue は与えられたタグ情報やwire typeをもとにバイト列をパースします
-func parseValue(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error) {
+// bindBytes は与えられた protoFieldMetadata をもとにバイト列を protoFieldMetadata.rv にbindします
+func bindBytes(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error) {
 	// バイナリから読み取ったwire typeは基本的にstruct tagのwire typeと一致します
 	// structのフィールド定義がpacked repeated fieldsの場合はwire typeはlength delimitedもありうるので一致していなくても許容します
 	if wt != sf.wt && !sf.fts.Has(fieldPacked) {
@@ -88,26 +88,26 @@ func parseValue(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error)
 
 			//if ptwt == wireVarint && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
-			n, err := parseVarint(sf.pt, elem, b)
+			n, err := bindVarint(sf.pt, elem, b)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read packed varint field: %w", err)
 			}
 			sf.rv.Set(reflect.Append(sf.rv, elem))
 			return n, nil
 		}
-		return parseVarint(sf.pt, sf.rv, b)
+		return bindVarint(sf.pt, sf.rv, b)
 	case wireFixed64:
 		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースします
 		if ptwt == wireFixed64 && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
-			n, err := parseFixed64(sf.pt, elem, b)
+			n, err := bindFixed64(sf.pt, elem, b)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read packed 64-bit field: %w", err)
 			}
 			sf.rv.Set(reflect.Append(sf.rv, elem))
 			return n, nil
 		}
-		return parseFixed64(sf.pt, sf.rv, b)
+		return bindFixed64(sf.pt, sf.rv, b)
 	case wireLengthDelimited:
 		// 該当フィールドがsliceとして宣言されていれば、複数回パースできるようにします
 		// LengthDelimitedはpackedとして宣言できないので、packed形式のことは考慮しません
@@ -115,35 +115,35 @@ func parseValue(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error)
 		// >Only repeated fields of primitive numeric types (types which use the varint, 32-bit, or 64-bit wire types) can be declared "packed".
 		if sf.rv.Kind() == reflect.Slice && sf.rv.Type() != reflect.TypeOf([]byte(nil)) && !ptwt.Packable() {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
-			n, err := parseLengthDelimited(sf.pt, sf.fts, elem, b)
+			n, err := bindLengthDelimited(sf.pt, sf.fts, elem, b)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read repeatable length-delimited field: %w", err)
 			}
 			sf.rv.Set(reflect.Append(sf.rv, elem))
 			return n, nil
 		}
-		return parseLengthDelimited(sf.pt, sf.fts, sf.rv, b)
+		return bindLengthDelimited(sf.pt, sf.fts, sf.rv, b)
 	case wireFixed32:
 		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースします
 		if ptwt == wireFixed32 && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
-			n, err := parseFixed32(sf.pt, elem, b)
+			n, err := bindFixed32(sf.pt, elem, b)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read packed 32-bit field: %w", err)
 			}
 			sf.rv.Set(reflect.Append(sf.rv, elem))
 			return n, nil
 		}
-		return parseFixed32(sf.pt, sf.rv, b)
+		return bindFixed32(sf.pt, sf.rv, b)
 	default:
 		return 0, fmt.Errorf("unsupported type: %d, err: %w", wt, UnknownTypeErr)
 	}
 }
 
-// parseVarint はwire typeがvarintなフィールドを読み取って、渡された rv にbindします
+// bindVarint はwire typeがvarintなフィールドを読み取って、渡された rv にbindします
 // bindに成功した場合読み取ったバイト数を返します
 // sint64, sint32 が指定された場合はバイト数の削減のためzigzag encodingを利用します
-func parseVarint(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
+func bindVarint(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	val, n, err := readVarint(b)
 	if err != nil {
 		return 0, fmt.Errorf("failed to read varint field: %w", err)
@@ -171,9 +171,9 @@ func parseVarint(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	return n, nil
 }
 
-// parseFixed64 はバイト列からwire typeが64-bitなフィールドを読み取って、渡された rv にbindします
+// bindFixed64 はバイト列からwire typeが64-bitなフィールドを読み取って、渡された rv にbindします
 // bindに成功した場合読み取ったバイト数を返します
-func parseFixed64(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
+func bindFixed64(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	val := binary.LittleEndian.Uint64(b)
 	n = 8
 	switch {
@@ -189,14 +189,14 @@ func parseFixed64(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	return n, nil
 }
 
-// parseLengthDelimited はバイト列からwire typeがlength delimitedなフィールドを読み取って、渡された rv にbindします
+// bindLengthDelimited はバイト列からwire typeがlength delimitedなフィールドを読み取って、渡された rv にbindします
 // bindに成功した場合読み取ったバイト数を返します
 // 形式としては先頭に可変長バイト列としてバイト長がエンコードされており、そのあとにデータが格納されています
 //
 // 考慮事項として、lengthDelimitedには以下のように特殊な値が設定されている場合があるためそのようなメッセージも処理できるようにしています
 // - embed: 別のメッセージがバイナリとしてフィールドに入れ子のように埋め込まれている
 // - packed: varint, fixed64, fixed32のいずれかのwire typeの値が1フィールドに複数設定されている
-func parseLengthDelimited(pt protoType, fts fieldTypes, rv reflect.Value, b []byte) (n int, err error) {
+func bindLengthDelimited(pt protoType, fts fieldTypes, rv reflect.Value, b []byte) (n int, err error) {
 	byteLen, n, err := readVarint(b)
 	if err != nil {
 		return 0, fmt.Errorf("failed to read varint field: %w", err)
@@ -226,7 +226,7 @@ func parseLengthDelimited(pt protoType, fts fieldTypes, rv reflect.Value, b []by
 		case wireVarint:
 			for len(val) > 0 {
 				elem := reflect.New(rv.Type().Elem()).Elem()
-				m, err := parseVarint(pt, elem, val)
+				m, err := bindVarint(pt, elem, val)
 				if err != nil {
 					return 0, fmt.Errorf("failed to read packed varint field: %w", err)
 				}
@@ -236,7 +236,7 @@ func parseLengthDelimited(pt protoType, fts fieldTypes, rv reflect.Value, b []by
 		case wireFixed64:
 			for len(val) > 0 {
 				elem := reflect.New(rv.Type().Elem()).Elem()
-				m, err := parseFixed64(pt, elem, val)
+				m, err := bindFixed64(pt, elem, val)
 				if err != nil {
 					return 0, errors.New("failed to read packed 64-bit field")
 				}
@@ -246,7 +246,7 @@ func parseLengthDelimited(pt protoType, fts fieldTypes, rv reflect.Value, b []by
 		case wireFixed32:
 			for len(val) > 0 {
 				elem := reflect.New(rv.Type().Elem()).Elem()
-				m, err := parseFixed32(pt, elem, val)
+				m, err := bindFixed32(pt, elem, val)
 				if err != nil {
 					return 0, errors.New("failed to read packed 32-bit field")
 				}
@@ -260,9 +260,9 @@ func parseLengthDelimited(pt protoType, fts fieldTypes, rv reflect.Value, b []by
 	return n, nil
 }
 
-// parseFixed32 はバイト列からwire typeがfixed32なフィールドを読み取って、渡された rv にbindします
+// bindFixed32 はバイト列からwire typeがfixed32なフィールドを読み取って、渡された rv にbindします
 // bindに成功した場合読み取ったバイト数を返します
-func parseFixed32(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
+func bindFixed32(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	val := binary.LittleEndian.Uint32(b)
 	n = 4
 	switch {
