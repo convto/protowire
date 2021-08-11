@@ -55,22 +55,22 @@ func newProtoFieldMetadata(f reflect.StructField, rv reflect.Value) (uint32, pro
 	return uint32(fieldNum), sf, nil
 }
 
-// oneOfField はoneofをパースするためにinterfaceやその実装の情報とstructのフィールド定義を持ちます
+// oneOfFieldMetadata はoneofをパースするためにinterfaceやその実装の情報とstructのフィールド定義を持ちます
 // interfaceを実装するimplementの型はフィールド数1のstructである必要があります
 // implementは実装のポインタであり、structFieldは実装のstructのフィールド情報です
 // ifaceはstructから読み取ったoneofフィールドの値であり、ここに値をSetすれば元の構造の値が更新されます。手順は以下です
 // 1: protoFieldMetadata.rv にセット
 // 2: 1で implement が更新されるので iface に implement をセット
-type oneOfField struct {
-	iface       reflect.Value
-	implement   reflect.Value
-	structField protoFieldMetadata
+type oneOfFieldMetadata struct {
+	iface              reflect.Value
+	implement          reflect.Value
+	protoFieldMetadata protoFieldMetadata
 }
 
-// newOneOfFields はあるoneofフィールドに代入される可能性のあるすべての構造の情報を読み取ります
+// getOneOfFieldMetadataByIface はあるoneofフィールドに代入される可能性のあるすべての構造の情報を読み取ります
 // 実装上oneofのフィールドはinterfaceとなっており、その実装としていくつかのstructが存在することを想定しています
 // あるoneofフィールドを実装しているstructをすべて読み取り、そのstructのタグ情報や、値の代入のためのreflect.Valueの取得などを行います
-func newOneOfFields(iface reflect.Value) (map[uint32]oneOfField, error) {
+func getOneOfFieldMetadataByIface(iface reflect.Value) (map[uint32]oneOfFieldMetadata, error) {
 	ifaceTyp := iface.Type()
 	if ifaceTyp.Kind() != reflect.Interface {
 		return nil, fmt.Errorf("oneof field type must be interface, but %s", ifaceTyp.Kind().String())
@@ -79,7 +79,7 @@ func newOneOfFields(iface reflect.Value) (map[uint32]oneOfField, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get %s implements: %w", ifaceTyp.String(), err)
 	}
-	oneOfsByNumber := make(map[uint32]oneOfField, len(rvs))
+	oneOfsByNumber := make(map[uint32]oneOfFieldMetadata, len(rvs))
 	for _, rv := range rvs {
 		rt := rv.Type()
 		if rt.Kind() == reflect.Ptr {
@@ -98,10 +98,10 @@ func newOneOfFields(iface reflect.Value) (map[uint32]oneOfField, error) {
 		if !sf.fts.Has(fieldOneOf) {
 			return nil, fmt.Errorf("oneof field type must be fieldOneOf, but %s", sf.fts)
 		}
-		oneOfsByNumber[fieldNum] = oneOfField{
-			iface:       iface,
-			implement:   rv,
-			structField: sf,
+		oneOfsByNumber[fieldNum] = oneOfFieldMetadata{
+			iface:              iface,
+			implement:          rv,
+			protoFieldMetadata: sf,
 		}
 	}
 	return oneOfsByNumber, nil

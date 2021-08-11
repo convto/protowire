@@ -81,11 +81,11 @@ func Test_parseProtoBind(t *testing.T) {
 						rv:  reflect.ValueOf(""),
 					},
 				},
-				oneOfsByNumber: map[uint32]oneOfField{
+				oneOfsByNumber: map[uint32]oneOfFieldMetadata{
 					2: {
 						iface:     reflect.New(reflect.TypeOf((*isTestOneOf_TestIdentifier)(nil)).Elem()).Elem(),
 						implement: reflect.ValueOf(&TestOneOf_Id{}),
-						structField: protoFieldMetadata{
+						protoFieldMetadata: protoFieldMetadata{
 							wt:  wireLengthDelimited,
 							pt:  protoString,
 							fts: fieldTypes{fieldOneOf},
@@ -95,7 +95,7 @@ func Test_parseProtoBind(t *testing.T) {
 					3: {
 						iface:     reflect.New(reflect.TypeOf((*isTestOneOf_TestIdentifier)(nil)).Elem()).Elem(),
 						implement: reflect.ValueOf(&TestOneOf_Email{}),
-						structField: protoFieldMetadata{
+						protoFieldMetadata: protoFieldMetadata{
 							wt:  wireLengthDelimited,
 							pt:  protoString,
 							fts: fieldTypes{fieldOneOf},
@@ -105,7 +105,7 @@ func Test_parseProtoBind(t *testing.T) {
 					4: {
 						iface:     reflect.New(reflect.TypeOf((*isTestOneOf_TestMessage)(nil)).Elem()).Elem(),
 						implement: reflect.ValueOf(&TestOneOf_TextMessage{}),
-						structField: protoFieldMetadata{
+						protoFieldMetadata: protoFieldMetadata{
 							wt:  wireLengthDelimited,
 							pt:  protoString,
 							fts: fieldTypes{fieldOneOf},
@@ -115,7 +115,7 @@ func Test_parseProtoBind(t *testing.T) {
 					5: {
 						iface:     reflect.New(reflect.TypeOf((*isTestOneOf_TestMessage)(nil)).Elem()).Elem(),
 						implement: reflect.ValueOf(&TestOneOf_BinaryMessage{}),
-						structField: protoFieldMetadata{
+						protoFieldMetadata: protoFieldMetadata{
 							wt:  wireLengthDelimited,
 							pt:  protoBytes,
 							fts: fieldTypes{fieldOneOf},
@@ -173,10 +173,10 @@ func Test_parseProtoBind(t *testing.T) {
 					}
 					if v.iface.String() != want.iface.String() ||
 						v.implement.Type().String() != want.implement.Type().String() ||
-						v.structField.wt != want.structField.wt ||
-						!reflect.DeepEqual(v.structField.fts, want.structField.fts) ||
-						v.structField.pt != want.structField.pt ||
-						v.structField.rv.Type().String() != want.structField.rv.Type().String() {
+						v.protoFieldMetadata.wt != want.protoFieldMetadata.wt ||
+						!reflect.DeepEqual(v.protoFieldMetadata.fts, want.protoFieldMetadata.fts) ||
+						v.protoFieldMetadata.pt != want.protoFieldMetadata.pt ||
+						v.protoFieldMetadata.rv.Type().String() != want.protoFieldMetadata.rv.Type().String() {
 						t.Errorf("parseBindInfo() got = %v, want %v", got, tt.want)
 					}
 				}

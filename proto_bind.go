@@ -8,7 +8,7 @@ import (
 
 type protoBind struct {
 	fieldsByNumber map[uint32]protoFieldMetadata
-	oneOfsByNumber map[uint32]oneOfField
+	oneOfsByNumber map[uint32]oneOfFieldMetadata
 }
 
 const protoOneOfTag = "protowire_oneof"
@@ -25,13 +25,13 @@ func parseProtoBind(v interface{}) (protoBind, error) {
 	}
 	pb := protoBind{
 		fieldsByNumber: make(map[uint32]protoFieldMetadata),
-		oneOfsByNumber: make(map[uint32]oneOfField),
+		oneOfsByNumber: make(map[uint32]oneOfFieldMetadata),
 	}
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
 		// protobuf_oneof タグには該当フィールドがoneofかどうかの情報が入る
 		if t := f.Tag.Get(protoOneOfTag); t == "true" {
-			oneOfFieldByNumber, err := newOneOfFields(reflect.ValueOf(v).Elem().Field(i))
+			oneOfFieldByNumber, err := getOneOfFieldMetadataByIface(reflect.ValueOf(v).Elem().Field(i))
 			if err != nil {
 				return protoBind{}, fmt.Errorf("failed to parse oneof fields: %w", err)
 			}

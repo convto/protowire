@@ -39,10 +39,10 @@ func Unmarshal(b []byte, v interface{}) error {
 		}
 		osf, ok := pb.oneOfsByNumber[fn]
 		if ok {
-			if !osf.structField.rv.CanSet() || !osf.iface.CanSet() {
-				return fmt.Errorf("cant't set oneof field, field type: %s", osf.structField.rv.Type().String())
+			if !osf.protoFieldMetadata.rv.CanSet() || !osf.iface.CanSet() {
+				return fmt.Errorf("cant't set oneof field, field type: %s", osf.protoFieldMetadata.rv.Type().String())
 			}
-			n, err = parseValue(osf.structField, wt, b)
+			n, err = parseValue(osf.protoFieldMetadata, wt, b)
 			if err != nil {
 				return fmt.Errorf("failed to read oneof value: %w", err)
 			}
