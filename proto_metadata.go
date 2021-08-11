@@ -14,8 +14,8 @@ const (
 )
 
 type protoMetadata struct {
-	fieldsByNumber map[fieldNumber]protoFieldMetadata
-	oneOfsByNumber map[fieldNumber]oneOfFieldMetadata
+	fields      map[fieldNumber]protoFieldMetadata
+	oneOfFields map[fieldNumber]oneOfFieldMetadata
 }
 
 // newProtoMetadata はstructの情報を読み取り、wireのパースに必要な情報を生成します
@@ -28,30 +28,30 @@ func newProtoMetadata(v interface{}) (protoMetadata, error) {
 	if rt.Kind() != reflect.Struct {
 		return protoMetadata{}, errors.New("target value must be a struct")
 	}
-	pb := protoMetadata{
-		fieldsByNumber: make(map[fieldNumber]protoFieldMetadata),
-		oneOfsByNumber: make(map[fieldNumber]oneOfFieldMetadata),
+	pm := protoMetadata{
+		fields:      make(map[fieldNumber]protoFieldMetadata),
+		oneOfFields: make(map[fieldNumber]oneOfFieldMetadata),
 	}
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
 		// protobuf_oneof タグには該当フィールドがoneofかどうかの情報が入ります
 		if t := f.Tag.Get(protoOneOfTag); t == "true" {
-			oneOfFieldByNumber, err := getOneOfFieldMetadataByIface(reflect.ValueOf(v).Elem().Field(i))
+			oneOfFields, err := getOneOfFieldMetadataByIface(reflect.ValueOf(v).Elem().Field(i))
 			if err != nil {
 				return protoMetadata{}, fmt.Errorf("failed to get oneof fields: %w", err)
 			}
-			for fn, of := range oneOfFieldByNumber {
-				pb.oneOfsByNumber[fn] = of
+			for fn, ofm := range oneOfFields {
+				pm.oneOfFields[fn] = ofm
 			}
 			continue
 		}
-		fn, sf, err := newProtoFieldMetadata(f, reflect.ValueOf(v).Elem().Field(i))
+		fn, fm, err := newProtoFieldMetadata(f, reflect.ValueOf(v).Elem().Field(i))
 		if err != nil {
 			return protoMetadata{}, fmt.Errorf("failed to create struct field: %w", err)
 		}
-		pb.fieldsByNumber[fn] = sf
+		pm.fields[fn] = fm
 	}
-	return pb, nil
+	return pm, nil
 }
 
 // protoFieldMetadata は `protowire` タグの内容やそのフィールドの reflect.Value などの、wireのパースに必要なメタデータを表します
@@ -90,13 +90,13 @@ func newProtoFieldMetadata(f reflect.StructField, rv reflect.Value) (fieldNumber
 		fts[i] = ft
 	}
 
-	sf := protoFieldMetadata{
+	fm := protoFieldMetadata{
 		wt:  wireType(wt),
 		pt:  pt,
 		fts: fts,
 		rv:  rv,
 	}
-	return fieldNumber(fn), sf, nil
+	return fieldNumber(fn), fm, nil
 }
 
 // oneOfFieldMetadata はoneofをパースするためにinterfaceやその実装の情報とstructのフィールド定義を持ちます
@@ -123,7 +123,7 @@ func getOneOfFieldMetadataByIface(iface reflect.Value) (map[fieldNumber]oneOfFie
 	if err != nil {
 		return nil, fmt.Errorf("failed to get %s implements: %w", ifaceTyp.String(), err)
 	}
-	oneOfsByNumber := make(map[fieldNumber]oneOfFieldMetadata, len(rvs))
+	oneOfFields := make(map[fieldNumber]oneOfFieldMetadata, len(rvs))
 	for _, rv := range rvs {
 		rt := rv.Type()
 		if rt.Kind() == reflect.Ptr {
@@ -135,18 +135,18 @@ func getOneOfFieldMetadataByIface(iface reflect.Value) (map[fieldNumber]oneOfFie
 		if rt.NumField() != 1 {
 			return nil, fmt.Errorf("oneof implement field size must be 1, but %d", rt.NumField())
 		}
-		fieldNum, sf, err := newProtoFieldMetadata(rt.Field(0), rv.Elem().Field(0))
+		fieldNum, fm, err := newProtoFieldMetadata(rt.Field(0), rv.Elem().Field(0))
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse oneof struct field: %w", err)
 		}
-		if !sf.fts.Has(fieldOneOf) {
-			return nil, fmt.Errorf("oneof field type must be fieldOneOf, but %s", sf.fts)
+		if !fm.fts.Has(fieldOneOf) {
+			return nil, fmt.Errorf("oneof field type must be fieldOneOf, but %s", fm.fts)
 		}
-		oneOfsByNumber[fieldNum] = oneOfFieldMetadata{
+		oneOfFields[fieldNum] = oneOfFieldMetadata{
 			iface:              iface,
 			implement:          rv,
-			protoFieldMetadata: sf,
+			protoFieldMetadata: fm,
 		}
 	}
-	return oneOfsByNumber, nil
+	return oneOfFields, nil
 }

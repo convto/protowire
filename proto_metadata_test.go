@@ -31,7 +31,7 @@ func Test_newProtoMetadata(t *testing.T) {
 			name: "タグの値を読み取れる",
 			v:    &tagTest{},
 			want: protoMetadata{
-				fieldsByNumber: map[fieldNumber]protoFieldMetadata{
+				fields: map[fieldNumber]protoFieldMetadata{
 					1: {
 						wt:  wireVarint,
 						pt:  protoInt32,
@@ -51,14 +51,14 @@ func Test_newProtoMetadata(t *testing.T) {
 						rv:  reflect.ValueOf(""),
 					},
 				},
-				oneOfsByNumber: nil,
+				oneOfFields: nil,
 			},
 		},
 		{
 			name: "fieldTypeが複数の場合も読み取れる",
 			v:    &multipleFieldTypeTest{},
 			want: protoMetadata{
-				fieldsByNumber: map[fieldNumber]protoFieldMetadata{
+				fields: map[fieldNumber]protoFieldMetadata{
 					1: {
 						wt:  wireVarint,
 						pt:  protoInt32,
@@ -66,14 +66,14 @@ func Test_newProtoMetadata(t *testing.T) {
 						rv:  reflect.ValueOf([]int32(nil)),
 					},
 				},
-				oneOfsByNumber: nil,
+				oneOfFields: nil,
 			},
 		},
 		{
 			name: "タグにoneofが指定されていた場合はその実装なども読み取る",
 			v:    &testOneOf{},
 			want: protoMetadata{
-				fieldsByNumber: map[fieldNumber]protoFieldMetadata{
+				fields: map[fieldNumber]protoFieldMetadata{
 					1: {
 						wt:  wireLengthDelimited,
 						pt:  protoString,
@@ -81,7 +81,7 @@ func Test_newProtoMetadata(t *testing.T) {
 						rv:  reflect.ValueOf(""),
 					},
 				},
-				oneOfsByNumber: map[fieldNumber]oneOfFieldMetadata{
+				oneOfFields: map[fieldNumber]oneOfFieldMetadata{
 					2: {
 						iface:     reflect.New(reflect.TypeOf((*isTestOneOf_TestIdentifier)(nil)).Elem()).Elem(),
 						implement: reflect.ValueOf(&TestOneOf_Id{}),
@@ -151,9 +151,9 @@ func Test_newProtoMetadata(t *testing.T) {
 				t.Errorf("newProtoMetadata() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got.fieldsByNumber != nil {
-				for k, v := range got.fieldsByNumber {
-					want, ok := tt.want.fieldsByNumber[k]
+			if got.fields != nil {
+				for k, v := range got.fields {
+					want, ok := tt.want.fields[k]
 					if !ok {
 						t.Errorf("parseBindInfo() got = %v, want %v", got, tt.want)
 					}
@@ -165,9 +165,9 @@ func Test_newProtoMetadata(t *testing.T) {
 					}
 				}
 			}
-			if got.oneOfsByNumber != nil {
-				for k, v := range got.oneOfsByNumber {
-					want, ok := tt.want.oneOfsByNumber[k]
+			if got.oneOfFields != nil {
+				for k, v := range got.oneOfFields {
+					want, ok := tt.want.oneOfFields[k]
 					if !ok {
 						t.Errorf("parseBindInfo() got = %v, want %v", got, tt.want)
 					}

@@ -9,7 +9,7 @@ import (
 )
 
 func Unmarshal(b []byte, v interface{}) error {
-	pb, err := newProtoMetadata(v)
+	pm, err := newProtoMetadata(v)
 	if err != nil {
 		return fmt.Errorf("failed to parse protoMetadata from input interface{}: %w", err)
 	}
@@ -21,27 +21,27 @@ func Unmarshal(b []byte, v interface{}) error {
 		}
 		b = b[n:]
 
-		sf, ok := pb.fieldsByNumber[fn]
+		fm, ok := pm.fields[fn]
 		if ok {
-			if !sf.rv.CanSet() {
-				return fmt.Errorf("cant't set field, field type: %s", sf.rv.Type().String())
+			if !fm.rv.CanSet() {
+				return fmt.Errorf("cant't set field, field type: %s", fm.rv.Type().String())
 			}
-			n, err = bindBytes(sf, wt, b)
+			n, err = bindBytes(fm, wt, b)
 			if err != nil {
 				return fmt.Errorf("failed to read field value: %w", err)
 			}
 			b = b[n:]
 		}
-		osf, ok := pb.oneOfsByNumber[fn]
+		ofm, ok := pm.oneOfFields[fn]
 		if ok {
-			if !osf.protoFieldMetadata.rv.CanSet() || !osf.iface.CanSet() {
-				return fmt.Errorf("cant't set oneof field, field type: %s", osf.protoFieldMetadata.rv.Type().String())
+			if !ofm.protoFieldMetadata.rv.CanSet() || !ofm.iface.CanSet() {
+				return fmt.Errorf("cant't set oneof field, field type: %s", ofm.protoFieldMetadata.rv.Type().String())
 			}
-			n, err = bindBytes(osf.protoFieldMetadata, wt, b)
+			n, err = bindBytes(ofm.protoFieldMetadata, wt, b)
 			if err != nil {
 				return fmt.Errorf("failed to read oneof field value: %w", err)
 			}
-			osf.iface.Set(osf.implement)
+			ofm.iface.Set(ofm.implement)
 			b = b[n:]
 		}
 	}
@@ -65,69 +65,69 @@ func parseTag(b []byte) (fn fieldNumber, wt wireType, n int, err error) {
 }
 
 // bindBytes は与えられた protoFieldMetadata をもとにバイト列を protoFieldMetadata.rv にbindします
-func bindBytes(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error) {
+func bindBytes(fm protoFieldMetadata, wt wireType, b []byte) (n int, err error) {
 	// バイナリから読み取ったwire typeは基本的にstruct tagのwire typeと一致します
 	// structのフィールド定義がpacked repeated fieldsの場合はwire typeはlength delimitedもありうるので一致していなくても許容します
-	if wt != sf.wt && !sf.fts.Has(fieldPacked) {
-		return 0, fmt.Errorf("wrong wire type, struct wire tag: %d, binary wire tag: %d", sf.wt, wt)
+	if wt != fm.wt && !fm.fts.Has(fieldPacked) {
+		return 0, fmt.Errorf("wrong wire type, struct wire tag: %d, binary wire tag: %d", fm.wt, wt)
 	}
 
-	ptwt, err := sf.pt.toWireType()
+	ptwt, err := fm.pt.toWireType()
 	if err != nil {
 		return 0, fmt.Errorf("failed to convert proto type to wire type: %w", err)
 	}
 	switch wt {
 	case wireVarint:
 		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースします
-		if sf.fts.Has(fieldPacked) && sf.wt == wireLengthDelimited {
-			elem := reflect.New(sf.rv.Type().Elem()).Elem()
-			n, err := bindVarint(sf.pt, elem, b)
+		if fm.fts.Has(fieldPacked) && fm.wt == wireLengthDelimited {
+			elem := reflect.New(fm.rv.Type().Elem()).Elem()
+			n, err := bindVarint(fm.pt, elem, b)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read packed varint field: %w", err)
 			}
-			sf.rv.Set(reflect.Append(sf.rv, elem))
+			fm.rv.Set(reflect.Append(fm.rv, elem))
 			return n, nil
 		}
-		return bindVarint(sf.pt, sf.rv, b)
+		return bindVarint(fm.pt, fm.rv, b)
 	case wireFixed64:
 		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースします
-		if ptwt == wireFixed64 && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
-			elem := reflect.New(sf.rv.Type().Elem()).Elem()
-			n, err := bindFixed64(sf.pt, elem, b)
+		if ptwt == wireFixed64 && fm.fts.Has(fieldPacked) && fm.rv.Kind() == reflect.Slice {
+			elem := reflect.New(fm.rv.Type().Elem()).Elem()
+			n, err := bindFixed64(fm.pt, elem, b)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read packed 64-bit field: %w", err)
 			}
-			sf.rv.Set(reflect.Append(sf.rv, elem))
+			fm.rv.Set(reflect.Append(fm.rv, elem))
 			return n, nil
 		}
-		return bindFixed64(sf.pt, sf.rv, b)
+		return bindFixed64(fm.pt, fm.rv, b)
 	case wireLengthDelimited:
 		// 該当フィールドがsliceとして宣言されていれば、複数回パースできるようにします
 		// LengthDelimitedはpackedとして宣言できないので、packed形式のことは考慮しません
 		// https://developers.google.com/protocol-buffers/docs/encoding#optional
 		// >Only repeated fields of primitive numeric types (types which use the varint, 32-bit, or 64-bit wire types) can be declared "packed".
-		if sf.rv.Kind() == reflect.Slice && sf.rv.Type() != reflect.TypeOf([]byte(nil)) && !ptwt.Packable() {
-			elem := reflect.New(sf.rv.Type().Elem()).Elem()
-			n, err := bindLengthDelimited(sf.pt, sf.fts, elem, b)
+		if fm.rv.Kind() == reflect.Slice && fm.rv.Type() != reflect.TypeOf([]byte(nil)) && !ptwt.Packable() {
+			elem := reflect.New(fm.rv.Type().Elem()).Elem()
+			n, err := bindLengthDelimited(fm.pt, fm.fts, elem, b)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read repeatable length-delimited field: %w", err)
 			}
-			sf.rv.Set(reflect.Append(sf.rv, elem))
+			fm.rv.Set(reflect.Append(fm.rv, elem))
 			return n, nil
 		}
-		return bindLengthDelimited(sf.pt, sf.fts, sf.rv, b)
+		return bindLengthDelimited(fm.pt, fm.fts, fm.rv, b)
 	case wireFixed32:
 		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースします
-		if ptwt == wireFixed32 && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
-			elem := reflect.New(sf.rv.Type().Elem()).Elem()
-			n, err := bindFixed32(sf.pt, elem, b)
+		if ptwt == wireFixed32 && fm.fts.Has(fieldPacked) && fm.rv.Kind() == reflect.Slice {
+			elem := reflect.New(fm.rv.Type().Elem()).Elem()
+			n, err := bindFixed32(fm.pt, elem, b)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read packed 32-bit field: %w", err)
 			}
-			sf.rv.Set(reflect.Append(sf.rv, elem))
+			fm.rv.Set(reflect.Append(fm.rv, elem))
 			return n, nil
 		}
-		return bindFixed32(sf.pt, sf.rv, b)
+		return bindFixed32(fm.pt, fm.rv, b)
 	default:
 		return 0, fmt.Errorf("unsupported type: %d", wt)
 	}
