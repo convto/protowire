@@ -7,12 +7,12 @@ import (
 type wireType uint8
 
 const (
-	wireVarint wireType = iota
-	wireFixed64
-	wireLengthDelimited
+	wireVarint          wireType = 0
+	wireFixed64         wireType = 1
+	wireLengthDelimited wireType = 2
 	// wireStartGroup unsupported wire type
 	// wireEndGroup unsupported wire type
-	wireFixed32
+	wireFixed32 wireType = 5
 )
 
 func (wt wireType) Packable() bool {
