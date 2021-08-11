@@ -94,10 +94,9 @@ func newOneOfFields(iface reflect.Value) (map[uint32]oneOfField, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse oneof struct field: %w", err)
 		}
-		// TODO: このあたりはすべてValid関数で呼ぶようにする
-		//if !sf.fts.Has(fieldOneOf) {
-		//	return nil, fmt.Errorf("oneof field type must be fieldOneOf, but %s", sf.fts)
-		//}
+		if !sf.fts.Has(fieldOneOf) {
+			return nil, fmt.Errorf("oneof field type must be fieldOneOf, but %s", sf.fts)
+		}
 		oneOfsByNumber[fieldNum] = oneOfField{
 			iface:       iface,
 			implement:   rv,
