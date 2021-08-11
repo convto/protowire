@@ -18,7 +18,7 @@ type protoMetadata struct {
 	oneOfsByNumber map[fieldNumber]oneOfFieldMetadata
 }
 
-// newProtoMetadata はstructの情報を読み取り、wireのパースに必要な情報を生成する
+// newProtoMetadata はstructの情報を読み取り、wireのパースに必要な情報を生成します
 func newProtoMetadata(v interface{}) (protoMetadata, error) {
 	rt := reflect.TypeOf(v)
 	if rt.Kind() != reflect.Ptr {
@@ -34,7 +34,7 @@ func newProtoMetadata(v interface{}) (protoMetadata, error) {
 	}
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
-		// protobuf_oneof タグには該当フィールドがoneofかどうかの情報が入る
+		// protobuf_oneof タグには該当フィールドがoneofかどうかの情報が入ります
 		if t := f.Tag.Get(protoOneOfTag); t == "true" {
 			oneOfFieldByNumber, err := getOneOfFieldMetadataByIface(reflect.ValueOf(v).Elem().Field(i))
 			if err != nil {
@@ -63,7 +63,7 @@ type protoFieldMetadata struct {
 }
 
 // newProtoFieldMetadata はstructに振られた `protowire` タグ情報や、
-// そのフィールドに値をSetするための reflect.Value 値などからmetadataを生成する
+// そのフィールドに値をSetするための reflect.Value 値などからmetadataを生成します
 func newProtoFieldMetadata(f reflect.StructField, rv reflect.Value) (fieldNumber, protoFieldMetadata, error) {
 	t := strings.Split(f.Tag.Get(protoTag), ",")
 	if len(t) < 4 {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// wireType はwireバイナリの各fieldのtype
 type wireType uint8
 
 const (
@@ -22,8 +23,10 @@ func (wt wireType) Packable() bool {
 	return false
 }
 
+// fieldNumber はwireバイナリのフィールド番号
 type fieldNumber uint32
 
+// protoType はwireバイナリをパースするときにどの型としてパースするのかの情報
 type protoType string
 
 const (
@@ -72,6 +75,7 @@ func (pt protoType) toWireType() (wireType, error) {
 	}
 }
 
+// fieldType はwireバイナリの各フィールドの形式などについての情報
 type fieldType string
 
 func newFieldType(s string) (fieldType, error) {

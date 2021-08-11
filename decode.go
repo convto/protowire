@@ -53,7 +53,7 @@ func Unmarshal(b []byte, v interface{}) error {
 	return nil
 }
 
-// parseTag はfield numberとwire typeを読み取ります
+// parseTag はfield numberとwire typeを読み取ります。読み取りに成功すると読み取ったバイト数も返します。
 func parseTag(b []byte) (fn fieldNumber, wt wireType, n int, err error) {
 	tag, n, err := readVarint(b)
 	if err != nil {
@@ -71,8 +71,8 @@ func parseTag(b []byte) (fn fieldNumber, wt wireType, n int, err error) {
 
 // parseValue は与えられたタグ情報やwire typeをもとにバイト列をパースします
 func parseValue(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error) {
-	// バイナリから読み取ったwire typeは基本的にstruct tagのwire typeと一致する
-	// structのフィールド定義がpacked repeated fieldsの場合はwire typeはlength delimitedもありうるので一致していなくても許容する
+	// バイナリから読み取ったwire typeは基本的にstruct tagのwire typeと一致します
+	// structのフィールド定義がpacked repeated fieldsの場合はwire typeはlength delimitedもありうるので一致していなくても許容します
 	if wt != sf.wt && !sf.fts.Has(fieldPacked) {
 		return 0, fmt.Errorf("wrong wire type, struct wire tag: %d, binary wire tag: %d", sf.wt, wt)
 	}
@@ -83,7 +83,7 @@ func parseValue(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error)
 	}
 	switch wt {
 	case wireVarint:
-		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースする
+		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースします
 		if sf.fts.Has(fieldPacked) && sf.wt == wireLengthDelimited {
 
 			//if ptwt == wireVarint && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
@@ -97,7 +97,7 @@ func parseValue(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error)
 		}
 		return parseVarint(sf.pt, sf.rv, b)
 	case wireFixed64:
-		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースする
+		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースします
 		if ptwt == wireFixed64 && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
 			n, err := parseFixed64(sf.pt, elem, b)
@@ -109,8 +109,8 @@ func parseValue(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error)
 		}
 		return parseFixed64(sf.pt, sf.rv, b)
 	case wireLengthDelimited:
-		// 該当フィールドがsliceとして宣言されていれば、複数回パースできるようにする
-		// LengthDelimitedはpackedとして宣言できないので、packed形式のことは考慮しなくてよい
+		// 該当フィールドがsliceとして宣言されていれば、複数回パースできるようにします
+		// LengthDelimitedはpackedとして宣言できないので、packed形式のことは考慮しません
 		// https://developers.google.com/protocol-buffers/docs/encoding#optional
 		// >Only repeated fields of primitive numeric types (types which use the varint, 32-bit, or 64-bit wire types) can be declared "packed".
 		if sf.rv.Kind() == reflect.Slice && sf.rv.Type() != reflect.TypeOf([]byte(nil)) && !ptwt.Packable() {
@@ -124,7 +124,7 @@ func parseValue(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error)
 		}
 		return parseLengthDelimited(sf.pt, sf.fts, sf.rv, b)
 	case wireFixed32:
-		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースする
+		// structのフィールド定義がpacked repeated fieldsだった場合は互換のためlength delimitedでなくともsliceとしてパースします
 		if ptwt == wireFixed32 && sf.fts.Has(fieldPacked) && sf.rv.Kind() == reflect.Slice {
 			elem := reflect.New(sf.rv.Type().Elem()).Elem()
 			n, err := parseFixed32(sf.pt, elem, b)
@@ -140,8 +140,9 @@ func parseValue(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error)
 	}
 }
 
-// parseVarint はwire typeがvarintな場合の値の読み取りをします
-// sint64, sint32 が指定された場合はバイト数の削減のためzigzag encodingを利用する
+// parseVarint はwire typeがvarintなフィールドを読み取って、渡された rv にbindします
+// bindに成功した場合読み取ったバイト数を返します
+// sint64, sint32 が指定された場合はバイト数の削減のためzigzag encodingを利用します
 func parseVarint(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	val, n, err := readVarint(b)
 	if err != nil {
@@ -170,7 +171,8 @@ func parseVarint(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	return n, nil
 }
 
-// parseFixed64 はwire typeが64-bitな場合の値の読み取りをします
+// parseFixed64 はバイト列からwire typeが64-bitなフィールドを読み取って、渡された rv にbindします
+// bindに成功した場合読み取ったバイト数を返します
 func parseFixed64(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	val := binary.LittleEndian.Uint64(b)
 	n = 8
@@ -187,8 +189,13 @@ func parseFixed64(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	return n, nil
 }
 
-// parseLengthDelimited はwire typeがlength delimitedな場合の値の読み取りをします
-// 先頭に可変長バイト列としてバイト長がエンコードされており、そのあとにデータが格納されています
+// parseLengthDelimited はバイト列からwire typeがlength delimitedなフィールドを読み取って、渡された rv にbindします
+// bindに成功した場合読み取ったバイト数を返します
+// 形式としては先頭に可変長バイト列としてバイト長がエンコードされており、そのあとにデータが格納されています
+//
+// 考慮事項として、lengthDelimitedには以下のように特殊な値が設定されている場合があるためそのようなメッセージも処理できるようにしています
+// - embed: 別のメッセージがバイナリとしてフィールドに入れ子のように埋め込まれている
+// - packed: varint, fixed64, fixed32のいずれかのwire typeの値が1フィールドに複数設定されている
 func parseLengthDelimited(pt protoType, fts fieldTypes, rv reflect.Value, b []byte) (n int, err error) {
 	byteLen, n, err := readVarint(b)
 	if err != nil {
@@ -253,6 +260,8 @@ func parseLengthDelimited(pt protoType, fts fieldTypes, rv reflect.Value, b []by
 	return n, nil
 }
 
+// parseFixed32 はバイト列からwire typeがfixed32なフィールドを読み取って、渡された rv にbindします
+// bindに成功した場合読み取ったバイト数を返します
 func parseFixed32(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	val := binary.LittleEndian.Uint32(b)
 	n = 4
@@ -269,7 +278,7 @@ func parseFixed32(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	return n, nil
 }
 
-// readVarint は可変長バイト列の読み取り処理
+// readVarint は可変長バイト列の読み取り処理。読み取りに成功した場合読み取った値と読み進めたバイト数を返します
 func readVarint(b []byte) (v uint64, n int, err error) {
 	// little endian で読み取っていく
 	for shift := uint(0); ; shift += 7 {
