@@ -70,7 +70,7 @@ func parseTag(b []byte) (fn uint32, wt wireType, n int, err error) {
 }
 
 // parseValue は与えられたタグ情報やwire typeをもとにバイト列をパースします
-func parseValue(sf structField, wt wireType, b []byte) (n int, err error) {
+func parseValue(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error) {
 	// バイナリから読み取ったwire typeは基本的にstruct tagのwire typeと一致する
 	// structのフィールド定義がpacked repeated fieldsの場合はwire typeはlength delimitedもありうるので一致していなくても許容する
 	if wt != sf.wt && !sf.fts.Has(fieldPacked) {

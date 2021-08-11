@@ -7,7 +7,7 @@ import (
 )
 
 type protoBind struct {
-	fieldsByNumber map[uint32]structField
+	fieldsByNumber map[uint32]protoFieldMetadata
 	oneOfsByNumber map[uint32]oneOfField
 }
 
@@ -24,7 +24,7 @@ func parseProtoBind(v interface{}) (protoBind, error) {
 		return protoBind{}, errors.New("target value must be a struct")
 	}
 	pb := protoBind{
-		fieldsByNumber: make(map[uint32]structField),
+		fieldsByNumber: make(map[uint32]protoFieldMetadata),
 		oneOfsByNumber: make(map[uint32]oneOfField),
 	}
 	for i := 0; i < rt.NumField(); i++ {
@@ -40,7 +40,7 @@ func parseProtoBind(v interface{}) (protoBind, error) {
 			}
 			continue
 		}
-		fieldNum, sf, err := newStructField(f, reflect.ValueOf(v).Elem().Field(i))
+		fieldNum, sf, err := newProtoFieldMetadata(f, reflect.ValueOf(v).Elem().Field(i))
 		if err != nil {
 			return protoBind{}, fmt.Errorf("failed to parse struct field: %w", err)
 		}

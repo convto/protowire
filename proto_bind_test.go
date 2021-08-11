@@ -31,7 +31,7 @@ func Test_parseProtoBind(t *testing.T) {
 			name: "タグの値を読み取れる",
 			v:    &tagTest{},
 			want: protoBind{
-				fieldsByNumber: map[uint32]structField{
+				fieldsByNumber: map[uint32]protoFieldMetadata{
 					1: {
 						wt:  wireVarint,
 						pt:  protoInt32,
@@ -58,7 +58,7 @@ func Test_parseProtoBind(t *testing.T) {
 			name: "fieldTypeが複数の場合も読み取れる",
 			v:    &multipleFieldTypeTest{},
 			want: protoBind{
-				fieldsByNumber: map[uint32]structField{
+				fieldsByNumber: map[uint32]protoFieldMetadata{
 					1: {
 						wt:  wireVarint,
 						pt:  protoInt32,
@@ -73,7 +73,7 @@ func Test_parseProtoBind(t *testing.T) {
 			name: "タグにoneofが指定されていた場合はその実装なども読み取る",
 			v:    &testOneOf{},
 			want: protoBind{
-				fieldsByNumber: map[uint32]structField{
+				fieldsByNumber: map[uint32]protoFieldMetadata{
 					1: {
 						wt:  wireLengthDelimited,
 						pt:  protoString,
@@ -85,7 +85,7 @@ func Test_parseProtoBind(t *testing.T) {
 					2: {
 						iface:     reflect.New(reflect.TypeOf((*isTestOneOf_TestIdentifier)(nil)).Elem()).Elem(),
 						implement: reflect.ValueOf(&TestOneOf_Id{}),
-						structField: structField{
+						structField: protoFieldMetadata{
 							wt:  wireLengthDelimited,
 							pt:  protoString,
 							fts: fieldTypes{fieldOneOf},
@@ -95,7 +95,7 @@ func Test_parseProtoBind(t *testing.T) {
 					3: {
 						iface:     reflect.New(reflect.TypeOf((*isTestOneOf_TestIdentifier)(nil)).Elem()).Elem(),
 						implement: reflect.ValueOf(&TestOneOf_Email{}),
-						structField: structField{
+						structField: protoFieldMetadata{
 							wt:  wireLengthDelimited,
 							pt:  protoString,
 							fts: fieldTypes{fieldOneOf},
@@ -105,7 +105,7 @@ func Test_parseProtoBind(t *testing.T) {
 					4: {
 						iface:     reflect.New(reflect.TypeOf((*isTestOneOf_TestMessage)(nil)).Elem()).Elem(),
 						implement: reflect.ValueOf(&TestOneOf_TextMessage{}),
-						structField: structField{
+						structField: protoFieldMetadata{
 							wt:  wireLengthDelimited,
 							pt:  protoString,
 							fts: fieldTypes{fieldOneOf},
@@ -115,7 +115,7 @@ func Test_parseProtoBind(t *testing.T) {
 					5: {
 						iface:     reflect.New(reflect.TypeOf((*isTestOneOf_TestMessage)(nil)).Elem()).Elem(),
 						implement: reflect.ValueOf(&TestOneOf_BinaryMessage{}),
-						structField: structField{
+						structField: protoFieldMetadata{
 							wt:  wireLengthDelimited,
 							pt:  protoBytes,
 							fts: fieldTypes{fieldOneOf},
