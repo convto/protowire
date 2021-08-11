@@ -8,11 +8,6 @@ import (
 	"reflect"
 )
 
-var (
-	OverflowErr    = errors.New("over flow")
-	UnknownTypeErr = errors.New("unknown type")
-)
-
 func Unmarshal(b []byte, v interface{}) error {
 	pb, err := newProtoMetadata(v)
 	if err != nil {
@@ -61,7 +56,7 @@ func parseTag(b []byte) (fn fieldNumber, wt wireType, n int, err error) {
 	}
 	// 仕様でtype, field_number合わせて32bitまでなので超えてたらエラー
 	if tag > math.MaxUint32 {
-		return 0, 0, 0, fmt.Errorf("invalid tag size: %w", OverflowErr)
+		return 0, 0, 0, fmt.Errorf("invalid tag size, max: %d, got: %d", math.MaxUint32, tag)
 	}
 	// 下位3bitはtype, それ以外はfield_number
 	fn = fieldNumber(tag >> 3)
@@ -134,7 +129,7 @@ func bindBytes(sf protoFieldMetadata, wt wireType, b []byte) (n int, err error) 
 		}
 		return bindFixed32(sf.pt, sf.rv, b)
 	default:
-		return 0, fmt.Errorf("unsupported type: %d, err: %w", wt, UnknownTypeErr)
+		return 0, fmt.Errorf("unsupported type: %d", wt)
 	}
 }
 
@@ -271,7 +266,11 @@ func bindFixed32(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 	case pt == protoFloat && rv.Kind() == reflect.Float32:
 		rv.SetFloat(float64(math.Float32frombits(val)))
 	default:
-		return 0, fmt.Errorf("unsupported type of 64-bit, proto type: %s, struct field type: %s", pt, rv.Type().String())
+		return 0, fmt.Errorf(
+			"unsupported type of 64-bit, proto type: %s, struct field type: %s",
+			pt,
+			rv.Type().String(),
+		)
 	}
 	return n, nil
 }
@@ -280,9 +279,12 @@ func bindFixed32(pt protoType, rv reflect.Value, b []byte) (n int, err error) {
 func readVarint(b []byte) (v uint64, n int, err error) {
 	// little endian で読み取っていく
 	for shift := uint(0); ; shift += 7 {
-		// 64bitこえたらoverflow
+		// 値を詰める変数vはuint64なので、shiftする値が64bitこえたらoverflow
 		if shift >= 64 {
-			return 0, 0, fmt.Errorf("failed to read varint: %w", OverflowErr)
+			return 0, 0, fmt.Errorf(
+				"the value of varint is up to 64 bits, but the upper 7 bits tried %d bits left shift",
+				shift,
+			)
 		}
 		// 対象のbyteの下位7bitを読み取ってvにつめていく
 		target := b[n]
