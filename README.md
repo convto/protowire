@@ -56,6 +56,6 @@ playground: https://play.golang.org/p/tdJvZhdYpcx
 
 ## Supported field pattern
 - oneof
-- optional
+- optional(△)
 - repeated
-- (packed)
+- packed
