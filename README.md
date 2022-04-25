@@ -1,6 +1,6 @@
 # protowire
 
-This is a binary unmarshaler with wire encoding that I made for learning purposes.  
+This is a binary unmarshaler with wire encoding that I made for learning purposes. DO NOT USE production！
 The specification of the wire is as follows
 
 - https://developers.google.com/protocol-buffers/docs/encoding
